@@ -21,6 +21,12 @@ class ApiSubmitFeedback extends ApiBase {
 		$request  = $this->getRequest();
 		$mode     = $config->get( 'SaintapediaFeedbackMode' );
 
+		// Deny blocked users
+		$block = $this->getUser()->getBlock();
+		if ( $block ) {
+			$this->dieBlocked( $block );
+		}
+
 		// Validate page
 		$title = \Title::newFromID( $params['pageid'] );
 		if ( !$title || !$title->exists() ) {
