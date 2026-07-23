@@ -1,0 +1,88 @@
+{
+	"name": "SaintapediaFeedback",
+	"version": "1.0.0",
+	"author": [ "Saintapedia contributors" ],
+	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
+	"descriptionmsg": "saintapediafeedback-desc",
+	"license-name": "GPL-2.0-or-later",
+	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.39.0"
+	},
+	"MessagesDirs": {
+		"SaintapediaFeedback": [ "i18n" ]
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\SaintapediaFeedback\\": "includes/"
+	},
+	"APIModules": {
+		"saintapediafeedback": "MediaWiki\\Extension\\SaintapediaFeedback\\Api\\ApiSubmitFeedback"
+	},
+	"SpecialPages": {
+		"SaintapediaFeedback": {
+			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Special\\SpecialFeedback",
+			"services": [ "SaintapediaFeedback.FeedbackStore" ]
+		}
+	},
+	"Hooks": {
+		"BeforePageDisplay": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onBeforePageDisplay",
+		"LoadExtensionSchemaUpdates": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onLoadExtensionSchemaUpdates"
+	},
+	"ResourceModules": {
+		"ext.saintapediafeedback.widget": {
+			"localBasePath": "modules/ext.saintapediafeedback.widget",
+			"remoteExtPath": "SaintapediaFeedback/modules/ext.saintapediafeedback.widget",
+			"scripts": [ "widget.js" ],
+			"styles": [ "widget.css" ],
+			"messages": [
+				"saintapediafeedback-button-label",
+				"saintapediafeedback-panel-title",
+				"saintapediafeedback-panel-subtitle",
+				"saintapediafeedback-category-inaccurate",
+				"saintapediafeedback-category-outdated",
+				"saintapediafeedback-category-needs-detail",
+				"saintapediafeedback-category-confusing",
+				"saintapediafeedback-category-missing-sources",
+				"saintapediafeedback-category-broken-links",
+				"saintapediafeedback-category-other",
+				"saintapediafeedback-comment-label",
+				"saintapediafeedback-comment-placeholder",
+				"saintapediafeedback-comment-placeholder-enterprise",
+				"saintapediafeedback-email-label",
+				"saintapediafeedback-email-placeholder",
+				"saintapediafeedback-submit",
+				"saintapediafeedback-cancel",
+				"saintapediafeedback-success-title",
+				"saintapediafeedback-success-body",
+				"saintapediafeedback-error-generic",
+				"saintapediafeedback-error-ratelimit",
+				"saintapediafeedback-error-nocategory"
+			],
+			"dependencies": [ "mediawiki.api", "mediawiki.user", "mediawiki.util" ]
+		}
+	},
+	"ServiceWiringFiles": [ "includes/ServiceWiring.php" ],
+	"config": {
+		"SaintapediaFeedbackMode": {
+			"value": "public",
+			"description": "Feedback mode: 'public' (rate-limited, CAPTCHA hook, short form) or 'enterprise' (relaxed limits, long form, email field)"
+		},
+		"SaintapediaFeedbackNamespaces": {
+			"value": [ 0 ],
+			"description": "Namespaces where the feedback widget is shown. Default: main namespace only."
+		},
+		"SaintapediaFeedbackRateLimit": {
+			"value": 5,
+			"description": "Max feedback submissions per IP per day in public mode."
+		},
+		"SaintapediaFeedbackEnterpriseRateLimit": {
+			"value": 50,
+			"description": "Max feedback submissions per IP per day in enterprise mode."
+		},
+		"SaintapediaFeedbackEnableEmail": {
+			"value": false,
+			"description": "Show optional contact email field (automatically enabled in enterprise mode)."
+		}
+	},
+	"manifest_version": 2
+}
