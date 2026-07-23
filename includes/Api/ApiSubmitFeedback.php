@@ -21,8 +21,8 @@ class ApiSubmitFeedback extends ApiBase {
 		$request  = $this->getRequest();
 		$mode     = $config->get( 'SaintapediaFeedbackMode' );
 
-		// Deny blocked users
-		$block = $this->getUser()->getBlock();
+		// Deny blocked users (includes partial blocks — deliberate, matches MW core write API convention)
+		$block = $this->getAuthority()->getBlock();
 		if ( $block ) {
 			$this->dieBlocked( $block );
 		}
