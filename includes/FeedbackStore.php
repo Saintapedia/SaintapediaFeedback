@@ -104,14 +104,27 @@ class FeedbackStore {
 		);
 	}
 
-	public function updateStatus( int $id, string $status ): void {
+	/**
+	 * Update workflow status for a feedback row.
+	 *
+	 * When $pageId is provided, the row must belong to that page (prevents
+	 * cross-page status mutation from the special-page UI).
+	 *
+	 * @return bool True if a matching row was updated
+	 */
+	public function updateStatus( int $id, string $status, ?int $pageId = null ): bool {
 		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
+		$conds = [ 'fb_id' => $id ];
+		if ( $pageId !== null ) {
+			$conds['fb_page_id'] = $pageId;
+		}
 		$db->update(
 			'spf_feedback',
 			[ 'fb_status' => $status ],
-			[ 'fb_id' => $id ],
+			$conds,
 			__METHOD__
 		);
+		return $db->affectedRows() > 0;
 	}
 
 	/** Export feedback for a page as structured data for LLM consumption. */

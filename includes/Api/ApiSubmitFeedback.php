@@ -30,28 +30,18 @@ class ApiSubmitFeedback extends ApiBase {
 			$this->dieBlocked( $block );
 		}
 
-		// hCaptcha / ConfirmEdit — open to anons, fail closed when required
-		if ( !CaptchaGate::pass( $config, $request, $user ) ) {
-			$reason = CaptchaGate::getLastFailReason();
-			if ( $reason === 'unavailable' ) {
-				$this->dieWithError( 'saintapediafeedback-error-captcha-unavailable', 'spf-captcha-unavailable' );
-			}
-			$this->dieWithError( 'saintapediafeedback-error-captcha', 'spf-captcha' );
-		}
-
-		// Validate page
+		// Cheap validation first so invalid requests do not burn a one-time hCaptcha token
+		// or an outbound siteverify round-trip (review: VeritasDei).
 		$title = \Title::newFromID( $params['pageid'] );
 		if ( !$title || !$title->exists() ) {
 			$this->dieWithError( 'apierror-invalidtitle' );
 		}
 
-		// Enforce same namespace allowlist as the widget (API is not UI-only)
 		$allowedNamespaces = $config->get( 'SaintapediaFeedbackNamespaces' );
 		if ( !in_array( $title->getNamespace(), $allowedNamespaces, true ) ) {
 			$this->dieWithError( 'saintapediafeedback-error-namespace', 'spf-namespace' );
 		}
 
-		// Validate categories
 		$allowedCategories = [
 			'inaccurate', 'outdated', 'needs-detail',
 			'confusing', 'missing-sources', 'broken-links', 'other',
@@ -64,6 +54,15 @@ class ApiSubmitFeedback extends ApiBase {
 		}
 		if ( !$categories ) {
 			$this->dieWithError( 'saintapediafeedback-error-nocategory' );
+		}
+
+		// hCaptcha / ConfirmEdit — open to anons, fail closed when required
+		if ( !CaptchaGate::pass( $config, $request, $user ) ) {
+			$reason = CaptchaGate::getLastFailReason();
+			if ( $reason === 'unavailable' ) {
+				$this->dieWithError( 'saintapediafeedback-error-captcha-unavailable', 'spf-captcha-unavailable' );
+			}
+			$this->dieWithError( 'saintapediafeedback-error-captcha', 'spf-captcha' );
 		}
 
 		// Rate limiting — hash the IP, never log the raw value

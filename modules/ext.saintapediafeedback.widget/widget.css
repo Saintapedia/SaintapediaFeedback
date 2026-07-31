@@ -397,7 +397,13 @@
 .spf-feedback-actions {
 	margin-top: 10px;
 	display: flex;
+	flex-wrap: wrap;
 	gap: 8px;
+}
+
+.spf-status-form {
+	display: inline;
+	margin: 0;
 }
 
 .spf-action-btn {
@@ -407,6 +413,8 @@
 	font-size: 0.8rem;
 	text-decoration: none;
 	color: #202122;
+	background: #fff;
+	cursor: pointer;
 }
 
 .spf-action-btn:hover {
