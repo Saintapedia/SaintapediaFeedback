@@ -25,6 +25,9 @@
 	"saintapediafeedback-error-generic": "Generic API error message",
 	"saintapediafeedback-error-ratelimit": "Shown when the submitter has hit the per-day rate limit",
 	"saintapediafeedback-error-nocategory": "Shown when user tries to submit without selecting any category",
+	"saintapediafeedback-error-captcha": "Shown when hCaptcha is missing or failed verification",
+	"saintapediafeedback-error-captcha-unavailable": "Shown when captcha is required but ConfirmEdit/hCaptcha is not configured on the wiki",
+	"saintapediafeedback-error-namespace": "Shown when API submit targets a page outside configured namespaces",
 	"saintapediafeedback-special-title": "Title of Special:SaintapediaFeedback page selector",
 	"saintapediafeedback-special-page-title": "Title of the per-page feedback view. $1 = page name.",
 	"saintapediafeedback-special-pagename": "Label for the article name field on the page selector",
@@ -38,5 +41,6 @@
 	"saintapediafeedback-action-dismissed": "Button to dismiss a feedback item",
 	"saintapediafeedback-export-link": "Wrapper text for the JSON export link. $1 = link.",
 	"saintapediafeedback-export-link-text": "Link text for the JSON export",
-	"saintapediafeedback-view": "Right required to view feedback on Special:SaintapediaFeedback"
+	"saintapediafeedback-view": "Right required to view feedback on Special:SaintapediaFeedback",
+	"right-saintapediafeedback-view": "{{doc-right|saintapediafeedback-view}}"
 }
