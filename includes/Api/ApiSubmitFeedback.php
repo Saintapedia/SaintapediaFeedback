@@ -3,31 +3,45 @@
 namespace MediaWiki\Extension\SaintapediaFeedback\Api;
 
 use ApiBase;
+use MediaWiki\Extension\SaintapediaFeedback\CaptchaGate;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
+use MediaWiki\MediaWikiServices;
 use Wikimedia\ParamValidator\ParamValidator;
 
 class ApiSubmitFeedback extends ApiBase {
 
 	private FeedbackStore $store;
 
-	public function __construct( $query, $moduleName, FeedbackStore $store ) {
-		parent::__construct( $query, $moduleName );
+	public function __construct( $main, $moduleName, FeedbackStore $store ) {
+		parent::__construct( $main, $moduleName );
 		$this->store = $store;
 	}
 
 	public function execute(): void {
-		$params   = $this->extractRequestParams();
-		$config   = $this->getConfig();
-		$request  = $this->getRequest();
-		$mode     = $config->get( 'SaintapediaFeedbackMode' );
+		$params  = $this->extractRequestParams();
+		$config  = $this->getConfig();
+		$request = $this->getRequest();
+		$mode    = $config->get( 'SaintapediaFeedbackMode' );
+		$user    = $this->getUser();
 
-		// Validate page
+		// Deny blocked users (includes partial blocks — deliberate, matches MW core write API convention)
+		$block = $this->getAuthority()->getBlock();
+		if ( $block ) {
+			$this->dieBlocked( $block );
+		}
+
+		// Cheap validation first so invalid requests do not burn a one-time hCaptcha token
+		// or an outbound siteverify round-trip (review: VeritasDei).
 		$title = \Title::newFromID( $params['pageid'] );
 		if ( !$title || !$title->exists() ) {
 			$this->dieWithError( 'apierror-invalidtitle' );
 		}
 
-		// Validate categories
+		$allowedNamespaces = $config->get( 'SaintapediaFeedbackNamespaces' );
+		if ( !in_array( $title->getNamespace(), $allowedNamespaces, true ) ) {
+			$this->dieWithError( 'saintapediafeedback-error-namespace', 'spf-namespace' );
+		}
+
 		$allowedCategories = [
 			'inaccurate', 'outdated', 'needs-detail',
 			'confusing', 'missing-sources', 'broken-links', 'other',
@@ -42,10 +56,22 @@ class ApiSubmitFeedback extends ApiBase {
 			$this->dieWithError( 'saintapediafeedback-error-nocategory' );
 		}
 
+		// hCaptcha / ConfirmEdit — open to anons, fail closed when required
+		if ( !CaptchaGate::pass( $config, $request, $user ) ) {
+			$reason = CaptchaGate::getLastFailReason();
+			if ( $reason === 'unavailable' ) {
+				$this->dieWithError( 'saintapediafeedback-error-captcha-unavailable', 'spf-captcha-unavailable' );
+			}
+			$this->dieWithError( 'saintapediafeedback-error-captcha', 'spf-captcha' );
+		}
+
 		// Rate limiting — hash the IP, never log the raw value
 		$ip     = $request->getIP();
-		$ipHash = hash( 'sha256', $ip . \MediaWiki\MediaWikiServices::getInstance()->getMainConfig()->get( 'SecretKey' ) );
-		$limit  = $mode === 'enterprise'
+		$ipHash = hash(
+			'sha256',
+			$ip . MediaWikiServices::getInstance()->getMainConfig()->get( 'SecretKey' )
+		);
+		$limit = $mode === 'enterprise'
 			? $config->get( 'SaintapediaFeedbackEnterpriseRateLimit' )
 			: $config->get( 'SaintapediaFeedbackRateLimit' );
 
@@ -76,8 +102,7 @@ class ApiSubmitFeedback extends ApiBase {
 			}
 		}
 
-		$user = $this->getUser();
-		$id   = $this->store->insert( [
+		$id = $this->store->insert( [
 			'pageId'       => $title->getArticleID(),
 			'namespace'    => $title->getNamespace(),
 			'title'        => $title->getDBkey(),
@@ -110,6 +135,13 @@ class ApiSubmitFeedback extends ApiBase {
 				ParamValidator::PARAM_TYPE => 'string',
 			],
 			'email' => [
+				ParamValidator::PARAM_TYPE => 'string',
+			],
+			// hCaptcha token (ConfirmEdit HCaptcha also accepts h-captcha-response)
+			'captchaWord' => [
+				ParamValidator::PARAM_TYPE => 'string',
+			],
+			'captchaword' => [
 				ParamValidator::PARAM_TYPE => 'string',
 			],
 		];

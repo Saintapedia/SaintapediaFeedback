@@ -1,5 +1,6 @@
 /**
  * SaintapediaFeedback — floating action button + slide-up feedback panel.
+ * Public mode: open to anonymous readers; hCaptcha when required server-side.
  */
 ( function () {
 	'use strict';
@@ -8,7 +9,10 @@
 	var config = {
 		mode: mw.config.get( 'spfMode' ) || 'public',
 		pageId: mw.config.get( 'spfPageId' ),
-		enableEmail: mw.config.get( 'spfEnableEmail' ) || false
+		enableEmail: mw.config.get( 'spfEnableEmail' ) || false,
+		requireCaptcha: mw.config.get( 'spfRequireCaptcha' ) || false,
+		captchaMisconfigured: mw.config.get( 'spfCaptchaMisconfigured' ) || false,
+		hCaptchaSiteKey: mw.config.get( 'spfHCaptchaSiteKey' ) || ''
 	};
 
 	var CATEGORIES = [
@@ -20,6 +24,9 @@
 		'broken-links',
 		'other'
 	];
+
+	var hcaptchaScriptPromise = null;
+	var hcaptchaWidgetId = null;
 
 	/* ── DOM helpers ───────────────────────────────────────────────────── */
 
@@ -42,6 +49,54 @@
 			}
 		} );
 		return node;
+	}
+
+	function loadHCaptchaScript() {
+		if ( window.hcaptcha ) {
+			return Promise.resolve();
+		}
+		if ( hcaptchaScriptPromise ) {
+			return hcaptchaScriptPromise;
+		}
+		hcaptchaScriptPromise = new Promise( function ( resolve, reject ) {
+			var s = document.createElement( 'script' );
+			s.src = 'https://hcaptcha.com/1/api.js?render=explicit';
+			s.async = true;
+			s.defer = true;
+			s.onload = function () {
+				resolve();
+			};
+			s.onerror = function () {
+				hcaptchaScriptPromise = null;
+				reject( new Error( 'hcaptcha-load-failed' ) );
+			};
+			document.head.appendChild( s );
+		} );
+		return hcaptchaScriptPromise;
+	}
+
+	function getCaptchaToken() {
+		if ( !config.requireCaptcha ) {
+			return '';
+		}
+		if ( !window.hcaptcha || hcaptchaWidgetId === null ) {
+			return '';
+		}
+		try {
+			return window.hcaptcha.getResponse( hcaptchaWidgetId ) || '';
+		} catch ( e ) {
+			return '';
+		}
+	}
+
+	function resetCaptcha() {
+		if ( window.hcaptcha && hcaptchaWidgetId !== null ) {
+			try {
+				window.hcaptcha.reset( hcaptchaWidgetId );
+			} catch ( e ) {
+				// ignore
+			}
+		}
 	}
 
 	/* ── Build widget ──────────────────────────────────────────────────── */
@@ -116,6 +171,14 @@
 			emailRow = el( 'div', { class: 'spf-field' }, [ emailLabel, emailInput ] );
 		}
 
+		// hCaptcha mount point (public / when required)
+		var captchaMount = null;
+		var captchaRow = null;
+		if ( config.requireCaptcha || config.captchaMisconfigured ) {
+			captchaMount = el( 'div', { class: 'spf-hcaptcha', id: 'spf-hcaptcha' } );
+			captchaRow = el( 'div', { class: 'spf-field spf-field-captcha' }, [ captchaMount ] );
+		}
+
 		// Submit / cancel buttons
 		var submitBtn = el( 'button', {
 			type: 'button',
@@ -137,6 +200,7 @@
 			categoryGroup,
 			el( 'div', { class: 'spf-field' }, [ commentLabel, textarea ] ),
 			emailRow,
+			captchaRow,
 			errorMsg,
 			el( 'div', { class: 'spf-actions' }, [ submitBtn, cancelBtn ] )
 		] );
@@ -157,6 +221,28 @@
 			successEl
 		] );
 
+		var captchaRendered = false;
+
+		function ensureCaptcha() {
+			if ( !config.requireCaptcha || !captchaMount || captchaRendered ) {
+				return Promise.resolve();
+			}
+			if ( config.captchaMisconfigured || !config.hCaptchaSiteKey ) {
+				errorMsg.textContent = mw.msg( 'saintapediafeedback-error-captcha-unavailable' );
+				return Promise.reject( new Error( 'captcha-misconfigured' ) );
+			}
+			return loadHCaptchaScript().then( function () {
+				if ( captchaRendered || !window.hcaptcha ) {
+					return;
+				}
+				hcaptchaWidgetId = window.hcaptcha.render( captchaMount, {
+					sitekey: config.hCaptchaSiteKey,
+					size: 'normal'
+				} );
+				captchaRendered = true;
+			} );
+		}
+
 		/* ── Panel open/close ─────────────────────────────────────── */
 
 		function openPanel() {
@@ -164,6 +250,9 @@
 			panel.classList.add( 'spf-panel--open' );
 			fab.setAttribute( 'aria-expanded', 'true' );
 			document.body.classList.add( 'spf-panel-open' );
+			ensureCaptcha().catch( function () {
+				// error already shown when misconfigured
+			} );
 			textarea.focus();
 		}
 
@@ -184,8 +273,27 @@
 
 		/* ── Submit ───────────────────────────────────────────────── */
 
+		function apiErrorCode( code, data ) {
+			// mw.Api rejects with (code, detail); code may be 'http' or error key
+			if ( typeof code === 'string' && code.indexOf( 'saintapediafeedback-' ) === 0 ) {
+				return code;
+			}
+			if ( data && data.error && data.error.code ) {
+				return data.error.code;
+			}
+			if ( data && data.errors && data.errors[ 0 ] && data.errors[ 0 ].code ) {
+				return data.errors[ 0 ].code;
+			}
+			return code;
+		}
+
 		function submitFeedback() {
 			errorMsg.textContent = '';
+
+			if ( config.captchaMisconfigured ) {
+				errorMsg.textContent = mw.msg( 'saintapediafeedback-error-captcha-unavailable' );
+				return;
+			}
 
 			var selectedCats = categoryChips
 				.filter( function ( c ) { return c.getAttribute( 'aria-pressed' ) === 'true'; } )
@@ -193,6 +301,12 @@
 
 			if ( !selectedCats.length ) {
 				errorMsg.textContent = mw.msg( 'saintapediafeedback-error-nocategory' );
+				return;
+			}
+
+			var captchaToken = getCaptchaToken();
+			if ( config.requireCaptcha && !captchaToken ) {
+				errorMsg.textContent = mw.msg( 'saintapediafeedback-error-captcha' );
 				return;
 			}
 
@@ -212,6 +326,10 @@
 			if ( emailInput && emailInput.value.trim() ) {
 				params.email = emailInput.value.trim();
 			}
+			if ( captchaToken ) {
+				// ConfirmEdit HCaptcha accepts captchaWord (and h-captcha-response)
+				params.captchaWord = captchaToken;
+			}
 
 			api.postWithToken( 'csrf', params ).then( function () {
 				formBody.hidden = true;
@@ -221,11 +339,31 @@
 					'<h3>' + mw.html.escape( mw.msg( 'saintapediafeedback-success-title' ) ) + '</h3>' +
 					'<p>' + mw.html.escape( mw.msg( 'saintapediafeedback-success-body' ) ) + '</p>';
 				setTimeout( closePanel, 3000 );
-			} ).catch( function ( code ) {
+			} ).catch( function ( code, data ) {
 				submitBtn.disabled = false;
 				submitBtn.textContent = mw.msg( 'saintapediafeedback-submit' );
-				if ( code === 'saintapediafeedback-error-ratelimit' ) {
+				resetCaptcha();
+				var err = apiErrorCode( code, data );
+				if ( err === 'saintapediafeedback-error-ratelimit' || err === 'spf-ratelimit' ) {
 					errorMsg.textContent = mw.msg( 'saintapediafeedback-error-ratelimit' );
+				} else if (
+					err === 'saintapediafeedback-error-captcha' ||
+					err === 'spf-captcha' ||
+					err === 'captcha'
+				) {
+					errorMsg.textContent = mw.msg( 'saintapediafeedback-error-captcha' );
+				} else if (
+					err === 'saintapediafeedback-error-captcha-unavailable' ||
+					err === 'spf-captcha-unavailable'
+				) {
+					errorMsg.textContent = mw.msg( 'saintapediafeedback-error-captcha-unavailable' );
+				} else if (
+					err === 'saintapediafeedback-error-namespace' ||
+					err === 'spf-namespace'
+				) {
+					errorMsg.textContent = mw.msg( 'saintapediafeedback-error-namespace' );
+				} else if ( err === 'blocked' || err === 'autoblocked' ) {
+					errorMsg.textContent = mw.msg( 'saintapediafeedback-error-generic' );
 				} else {
 					errorMsg.textContent = mw.msg( 'saintapediafeedback-error-generic' );
 				}
@@ -240,13 +378,17 @@
 			}
 		} );
 
-		return { fab, backdrop, panel };
+		return { fab: fab, backdrop: backdrop, panel: panel };
 	}
 
 	/* ── Init ──────────────────────────────────────────────────────────── */
 
 	function init() {
 		if ( !config.pageId ) {
+			return;
+		}
+		// Avoid double-inject if content hook fires more than once
+		if ( document.querySelector( '.spf-container' ) ) {
 			return;
 		}
 

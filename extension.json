@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"author": [ "Saintapedia contributors" ],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
@@ -16,12 +16,23 @@
 		"MediaWiki\\Extension\\SaintapediaFeedback\\": "includes/"
 	},
 	"APIModules": {
-		"saintapediafeedback": "MediaWiki\\Extension\\SaintapediaFeedback\\Api\\ApiSubmitFeedback"
+		"saintapediafeedback": {
+			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Api\\ApiSubmitFeedback",
+			"services": [ "SaintapediaFeedback.FeedbackStore" ]
+		}
 	},
 	"SpecialPages": {
 		"SaintapediaFeedback": {
 			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Special\\SpecialFeedback",
 			"services": [ "SaintapediaFeedback.FeedbackStore" ]
+		}
+	},
+	"AvailableRights": [
+		"saintapediafeedback-view"
+	],
+	"GroupPermissions": {
+		"sysop": {
+			"saintapediafeedback-view": true
 		}
 	},
 	"Hooks": {
@@ -56,7 +67,10 @@
 				"saintapediafeedback-success-body",
 				"saintapediafeedback-error-generic",
 				"saintapediafeedback-error-ratelimit",
-				"saintapediafeedback-error-nocategory"
+				"saintapediafeedback-error-nocategory",
+				"saintapediafeedback-error-captcha",
+				"saintapediafeedback-error-captcha-unavailable",
+				"saintapediafeedback-error-namespace"
 			],
 			"dependencies": [ "mediawiki.api", "mediawiki.user", "mediawiki.util" ]
 		}
@@ -65,11 +79,11 @@
 	"config": {
 		"SaintapediaFeedbackMode": {
 			"value": "public",
-			"description": "Feedback mode: 'public' (rate-limited, CAPTCHA hook, short form) or 'enterprise' (relaxed limits, long form, email field)"
+			"description": "Feedback mode: 'public' (anon-friendly, captcha-on by default, short form) or 'enterprise' (relaxed limits, captcha-off by default, long form, email)."
 		},
 		"SaintapediaFeedbackNamespaces": {
 			"value": [ 0 ],
-			"description": "Namespaces where the feedback widget is shown. Default: main namespace only."
+			"description": "Namespaces where the widget is shown and the API accepts submissions. Default: main namespace only."
 		},
 		"SaintapediaFeedbackRateLimit": {
 			"value": 5,
@@ -82,6 +96,10 @@
 		"SaintapediaFeedbackEnableEmail": {
 			"value": false,
 			"description": "Show optional contact email field (automatically enabled in enterprise mode)."
+		},
+		"SaintapediaFeedbackRequireCaptcha": {
+			"value": null,
+			"description": "Require hCaptcha via ConfirmEdit. null = auto (true for public mode, false for enterprise). true/false overrides per wiki."
 		}
 	},
 	"manifest_version": 2

@@ -2,7 +2,9 @@
 
 namespace MediaWiki\Extension\SaintapediaFeedback\Special;
 
+use ErrorPageError;
 use HTMLForm;
+use Html;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
 use SpecialPage;
 use Title;
@@ -71,14 +73,8 @@ class SpecialFeedback extends SpecialPage {
 		$out->setPageTitle( $this->msg( 'saintapediafeedback-special-page-title', $title->getPrefixedText() ) );
 		$out->addBacklinkSubtitle( $title );
 
-		// Handle status update actions
-		$action = $this->getRequest()->getVal( 'spfaction' );
-		$fbId   = (int)$this->getRequest()->getVal( 'spfid' );
-		$validStatuses = [ 'reviewed', 'actioned', 'dismissed' ];
-		if ( $action && $fbId && in_array( $action, $validStatuses, true ) ) {
-			$this->store->updateStatus( $fbId, $action );
-			$out->addHTML( '<div class="successbox">' . $this->msg( 'saintapediafeedback-status-updated' )->escaped() . '</div>' );
-		}
+		// Status updates: POST + edit token only (no CSRF via GET/img traps)
+		$this->handleStatusUpdate( $pageId );
 
 		$rows = $this->store->getForPage( $pageId );
 
@@ -94,13 +90,46 @@ class SpecialFeedback extends SpecialPage {
 		$out->addHTML( '</div>' );
 
 		// LLM export link for editors
-		$exportUrl = \SpecialPage::getTitleFor( 'SaintapediaFeedback', 'export/' . $pageId )->getLocalURL();
+		$exportUrl = SpecialPage::getTitleFor( 'SaintapediaFeedback', 'export/' . $pageId )->getLocalURL();
 		$out->addHTML( '<p class="spf-export-link">' .
 			$out->msg( 'saintapediafeedback-export-link' )->rawParams(
 				'<a href="' . htmlspecialchars( $exportUrl ) . '">' .
 				$out->msg( 'saintapediafeedback-export-link-text' )->escaped() . '</a>'
 			)->parse() .
 		'</p>' );
+	}
+
+	/**
+	 * Process status change only on POST with a valid edit token.
+	 * The feedback row must belong to the page being viewed.
+	 */
+	private function handleStatusUpdate( int $pageId ): void {
+		$request = $this->getRequest();
+		$action = $request->getVal( 'spfaction' );
+		$fbId   = (int)$request->getVal( 'spfid' );
+		$validStatuses = [ 'reviewed', 'actioned', 'dismissed' ];
+
+		if ( !$action || !$fbId || !in_array( $action, $validStatuses, true ) ) {
+			return;
+		}
+
+		// Reject CSRF-via-GET (e.g. <img src="...?spfaction=dismissed&spfid=42">)
+		if ( !$request->wasPosted() ) {
+			return;
+		}
+
+		if ( !$this->getUser()->matchEditToken( $request->getVal( 'wpEditToken' ) ) ) {
+			throw new ErrorPageError( 'sessionfailure-title', 'sessionfailure' );
+		}
+
+		$updated = $this->store->updateStatus( $fbId, $action, $pageId );
+		if ( $updated ) {
+			$this->getOutput()->addHTML(
+				'<div class="successbox">' .
+				$this->msg( 'saintapediafeedback-status-updated' )->escaped() .
+				'</div>'
+			);
+		}
 	}
 
 	private function renderFeedbackRow( object $row ): void {
@@ -130,16 +159,26 @@ class SpecialFeedback extends SpecialPage {
 				. nl2br( htmlspecialchars( $row->fb_comment ) ) . '</div>' );
 		}
 
-		// Status action buttons
-		$baseUrl = $this->getPageTitle( $row->fb_page_id )->getLocalURL();
+		// Status action buttons: POST forms with CSRF token (not GET links)
+		$actionUrl = $this->getPageTitle( (string)$row->fb_page_id )->getLocalURL();
 		$out->addHTML( '<div class="spf-feedback-actions">' );
 		foreach ( [ 'reviewed', 'actioned', 'dismissed' ] as $status ) {
 			if ( $row->fb_status !== $status ) {
-				$url = $baseUrl . '&spfaction=' . $status . '&spfid=' . (int)$row->fb_id;
-				$out->addHTML( '<a class="spf-action-btn spf-action-' . $status . '" href="'
-					. htmlspecialchars( $url ) . '">'
-					. $this->msg( 'saintapediafeedback-action-' . $status )->escaped()
-					. '</a> ' );
+				$out->addHTML(
+					Html::openElement( 'form', [
+						'method' => 'post',
+						'action' => $actionUrl,
+						'class'  => 'spf-status-form',
+					] ) .
+					Html::hidden( 'spfaction', $status ) .
+					Html::hidden( 'spfid', (string)(int)$row->fb_id ) .
+					Html::hidden( 'wpEditToken', $this->getUser()->getEditToken() ) .
+					Html::submitButton(
+						$this->msg( 'saintapediafeedback-action-' . $status )->text(),
+						[ 'class' => 'spf-action-btn spf-action-' . $status ]
+					) .
+					Html::closeElement( 'form' )
+				);
 			}
 		}
 		$out->addHTML( '</div>' );

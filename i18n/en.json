@@ -25,6 +25,9 @@
 	"saintapediafeedback-error-generic": "Something went wrong. Please try again.",
 	"saintapediafeedback-error-ratelimit": "You've sent a lot of feedback recently. Please try again tomorrow.",
 	"saintapediafeedback-error-nocategory": "Please select at least one category.",
+	"saintapediafeedback-error-captcha": "Please complete the captcha and try again.",
+	"saintapediafeedback-error-captcha-unavailable": "Feedback is temporarily unavailable (captcha not configured). Please try again later.",
+	"saintapediafeedback-error-namespace": "Feedback is not accepted for this type of page.",
 	"saintapediafeedback-special-title": "Article Feedback",
 	"saintapediafeedback-special-page-title": "Feedback: $1",
 	"saintapediafeedback-special-pagename": "Article",
@@ -38,5 +41,6 @@
 	"saintapediafeedback-action-dismissed": "Dismiss",
 	"saintapediafeedback-export-link": "For LLM analysis: $1",
 	"saintapediafeedback-export-link-text": "Export as JSON",
-	"saintapediafeedback-view": "View article feedback"
+	"saintapediafeedback-view": "View article feedback",
+	"right-saintapediafeedback-view": "View and manage article feedback"
 }
