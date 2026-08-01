@@ -4,6 +4,7 @@ namespace MediaWiki\Extension\SaintapediaFeedback\Api;
 
 use ApiBase;
 use MediaWiki\Extension\SaintapediaFeedback\CaptchaGate;
+use MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
 use MediaWiki\MediaWikiServices;
 use Wikimedia\ParamValidator\ParamValidator;
@@ -113,6 +114,8 @@ class ApiSubmitFeedback extends ApiBase {
 			'contactEmail' => $contactEmail,
 			'mode'         => $mode,
 		] );
+
+		FeedbackNotifier::notifyNew( $id, $title, $categories, $comment, $user );
 
 		$this->getResult()->addValue( null, $this->getModuleName(), [
 			'result' => 'success',

@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.2.0",
+	"version": "1.3.0",
 	"author": [ "Saintapedia contributors" ],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
@@ -14,6 +14,9 @@
 	},
 	"AutoloadNamespaces": {
 		"MediaWiki\\Extension\\SaintapediaFeedback\\": "includes/"
+	},
+	"TestAutoloadNamespaces": {
+		"MediaWiki\\Extension\\SaintapediaFeedback\\Tests\\": "tests/phpunit/"
 	},
 	"APIModules": {
 		"saintapediafeedback": {
@@ -37,7 +40,9 @@
 	},
 	"Hooks": {
 		"BeforePageDisplay": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onBeforePageDisplay",
-		"LoadExtensionSchemaUpdates": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onLoadExtensionSchemaUpdates"
+		"SidebarBeforeOutput": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onSidebarBeforeOutput",
+		"LoadExtensionSchemaUpdates": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onLoadExtensionSchemaUpdates",
+		"BeforeCreateEchoEvent": "MediaWiki\\Extension\\SaintapediaFeedback\\Notifications\\EchoHooks::onBeforeCreateEchoEvent"
 	},
 	"ResourceModules": {
 		"ext.saintapediafeedback.widget": {
@@ -77,6 +82,7 @@
 		"ext.saintapediafeedback.special": {
 			"localBasePath": "modules/ext.saintapediafeedback.special",
 			"remoteExtPath": "SaintapediaFeedback/modules/ext.saintapediafeedback.special",
+			"scripts": [ "special.js" ],
 			"styles": [ "special.css" ]
 		}
 	},
@@ -105,6 +111,14 @@
 		"SaintapediaFeedbackRequireCaptcha": {
 			"value": null,
 			"description": "Require hCaptcha via ConfirmEdit. null = auto (true for public mode, false for enterprise). true/false overrides per wiki."
+		},
+		"SaintapediaFeedbackNotifyUsers": {
+			"value": [],
+			"description": "Usernames (with saintapediafeedback-view) who receive Echo alerts on new feedback. Empty = no Echo alerts. Requires Extension:Echo."
+		},
+		"SaintapediaFeedbackNotifyEmail": {
+			"value": false,
+			"description": "Optional single email address to notify on each new submission (requires $wgEnableEmail / $wgSMTP). false disables."
 		}
 	},
 	"manifest_version": 2

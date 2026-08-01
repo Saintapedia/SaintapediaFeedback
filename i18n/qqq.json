@@ -43,6 +43,7 @@
 	"saintapediafeedback-export-link-text": "Link text for the JSON export",
 	"saintapediafeedback-view": "Right required to view feedback on Special:SaintapediaFeedback",
 	"right-saintapediafeedback-view": "{{doc-right|saintapediafeedback-view}}",
+	"saintapediafeedback-toolbox": "Toolbox link for editors to open feedback for the current page",
 	"saintapediafeedback-dashboard-title": "Title of the all-feedback admin dashboard",
 	"saintapediafeedback-dashboard-empty": "Shown when filters match no feedback rows",
 	"saintapediafeedback-dashboard-showing": "Pagination summary. $1 = first index, $2 = last index, $3 = total count.",
@@ -52,6 +53,8 @@
 	"saintapediafeedback-dashboard-clear-page": "Link to remove the article filter from the dashboard",
 	"saintapediafeedback-lookup-help": "Help text under the title lookup form that jumps to the per-article feedback view",
 	"saintapediafeedback-filter-page": "Label for optional article title field in the dashboard filter form",
+	"saintapediafeedback-filter-search": "Label for free-text search field",
+	"saintapediafeedback-filter-search-placeholder": "Placeholder for free-text search",
 	"saintapediafeedback-status-new": "Workflow status: newly submitted",
 	"saintapediafeedback-status-reviewed": "Workflow status: editor has seen it",
 	"saintapediafeedback-status-actioned": "Workflow status: fixed or acted on",
@@ -66,5 +69,15 @@
 	"saintapediafeedback-sort-oldest": "Sort option: oldest submissions first",
 	"saintapediafeedback-pagination": "Accessible name for pagination nav",
 	"saintapediafeedback-pagination-prev": "Link to previous (newer) page of results",
-	"saintapediafeedback-pagination-next": "Link to next (older) page of results"
+	"saintapediafeedback-pagination-next": "Link to next (older) page of results",
+	"saintapediafeedback-bulk-select-all": "Checkbox label to select every feedback row on the current dashboard page",
+	"saintapediafeedback-bulk-action": "Placeholder option in bulk action dropdown",
+	"saintapediafeedback-bulk-apply": "Submit button for bulk status change",
+	"saintapediafeedback-bulk-updated": "Confirmation after bulk update. $1 = number of rows updated.",
+	"notification-header-saintapediafeedback-new": "Echo notification header. $1 = page title.",
+	"notification-body-saintapediafeedback-new": "Echo body when a free-text comment exists. $1 = comment snippet.",
+	"notification-body-saintapediafeedback-new-cats": "Echo body when only categories exist. $1 = category list.",
+	"notification-link-saintapediafeedback-new": "Primary link label on the Echo notification",
+	"echo-pref-tooltip-saintapediafeedback": "Tooltip on Echo preference for this notification category",
+	"echo-category-title-saintapediafeedback": "Title of the Echo preference category"
 }

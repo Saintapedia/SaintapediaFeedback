@@ -4,6 +4,7 @@ namespace MediaWiki\Extension\SaintapediaFeedback\Special;
 
 use ErrorPageError;
 use Html;
+use MediaWiki\Extension\SaintapediaFeedback\FeedbackFilters;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
 use SpecialPage;
 use Title;
@@ -11,18 +12,13 @@ use Title;
 /**
  * Editor dashboard + per-page feedback review.
  *
- * - Special:SaintapediaFeedback — all feedback, filter/sort/process
+ * - Special:SaintapediaFeedback — all feedback, filter/sort/search/bulk process
  * - Special:SaintapediaFeedback/<pageid> — one article
  * - Special:SaintapediaFeedback/export — JSON of current filters
  * - Special:SaintapediaFeedback/export/<pageid> — JSON for one page
  */
 class SpecialFeedback extends SpecialPage {
 
-	private const VALID_STATUSES = [ 'new', 'reviewed', 'actioned', 'dismissed' ];
-	private const VALID_CATEGORIES = [
-		'inaccurate', 'outdated', 'needs-detail',
-		'confusing', 'missing-sources', 'broken-links', 'other',
-	];
 	private const PAGE_SIZE = 50;
 
 	private FeedbackStore $store;
@@ -37,6 +33,7 @@ class SpecialFeedback extends SpecialPage {
 		$this->checkPermissions();
 		$out = $this->getOutput();
 		$out->addModuleStyles( [ 'mediawiki.special', 'ext.saintapediafeedback.special' ] );
+		$out->addModules( 'ext.saintapediafeedback.special' );
 
 		$par = (string)( $par ?? '' );
 		$request = $this->getRequest();
@@ -49,6 +46,7 @@ class SpecialFeedback extends SpecialPage {
 
 		// Status mutations (POST + CSRF) before rendering
 		$this->handleStatusUpdate();
+		$this->handleBulkStatusUpdate();
 
 		// Subpage form Special:SaintapediaFeedback/<pageid> → per-article view.
 		// Query ?pageid= is reserved for dashboard filtering (not page view).
@@ -136,6 +134,19 @@ class SpecialFeedback extends SpecialPage {
 			)
 		);
 
+		// Bulk form is only the toolbar; row checkboxes associate via form="spf-bulk-form"
+		// so single-item status forms are not nested (invalid HTML).
+		$bulkAction = $this->getPageTitle()->getLocalURL( $this->filtersToQuery( $filters ) );
+		$out->addHTML( Html::openElement( 'form', [
+			'method' => 'post',
+			'action' => $bulkAction,
+			'class'  => 'spf-bulk-form',
+			'id'     => 'spf-bulk-form',
+		] ) );
+		$out->addHTML( Html::hidden( 'wpEditToken', $this->getUser()->getEditToken() ) );
+		$out->addHTML( $this->renderBulkToolbar() );
+		$out->addHTML( Html::closeElement( 'form' ) );
+
 		$out->addHTML( Html::openElement( 'div', [ 'class' => 'spf-feedback-list spf-dashboard-list' ] ) );
 		foreach ( $rows as $row ) {
 			$this->renderFeedbackRow( $row, true );
@@ -196,10 +207,14 @@ class SpecialFeedback extends SpecialPage {
 	 */
 	private function handleStatusUpdate(): void {
 		$request = $this->getRequest();
+		// Bulk form uses spfbulkaction — ignore here
+		if ( $request->getVal( 'spfbulkaction' ) ) {
+			return;
+		}
 		$action = $request->getVal( 'spfaction' );
 		$fbId   = (int)$request->getVal( 'spfid' );
 		$pageId = (int)$request->getVal( 'spfpageid' );
-		$validActions = [ 'reviewed', 'actioned', 'dismissed' ];
+		$validActions = FeedbackFilters::processActions();
 
 		if ( !$action || !$fbId || !in_array( $action, $validActions, true ) ) {
 			return;
@@ -229,6 +244,34 @@ class SpecialFeedback extends SpecialPage {
 		}
 	}
 
+	/**
+	 * Bulk status change for selected dashboard rows (POST + CSRF).
+	 */
+	private function handleBulkStatusUpdate(): void {
+		$request = $this->getRequest();
+		$action = $request->getVal( 'spfbulkaction' );
+		if ( !$action || !$request->wasPosted() ) {
+			return;
+		}
+		if ( !in_array( $action, FeedbackFilters::processActions(), true ) ) {
+			return;
+		}
+		if ( !$this->getUser()->matchEditToken( $request->getVal( 'wpEditToken' ) ) ) {
+			throw new ErrorPageError( 'sessionfailure-title', 'sessionfailure' );
+		}
+
+		$ids = $request->getArray( 'spfids' ) ?? [];
+		if ( !is_array( $ids ) ) {
+			$ids = [];
+		}
+		$n = $this->store->updateStatusBulk( $ids, $action );
+		$this->getOutput()->addHTML(
+			'<div class="successbox">' .
+			$this->msg( 'saintapediafeedback-bulk-updated' )->numParams( $n )->escaped() .
+			'</div>'
+		);
+	}
+
 	private function handleExport( string $par ): void {
 		$out = $this->getOutput();
 		$out->disable();
@@ -253,23 +296,15 @@ class SpecialFeedback extends SpecialPage {
 	/**
 	 * @return array{
 	 *   status:string,category:string,sort:string,pageId:?int,
-	 *   pagename:?string,pageLabel:?string,pageNotFound:bool
+	 *   pagename:?string,pageLabel:?string,pageNotFound:bool,search:string
 	 * }
 	 */
 	private function getFiltersFromRequest(): array {
 		$req = $this->getRequest();
-		$status = $req->getVal( 'status', 'new' );
-		if ( $status !== 'all' && !in_array( $status, self::VALID_STATUSES, true ) ) {
-			$status = 'new';
-		}
-		$category = $req->getVal( 'category', 'all' );
-		if ( $category !== 'all' && !in_array( $category, self::VALID_CATEGORIES, true ) ) {
-			$category = 'all';
-		}
-		$sort = $req->getVal( 'sort', 'newest' );
-		if ( !in_array( $sort, [ 'newest', 'oldest' ], true ) ) {
-			$sort = 'newest';
-		}
+		$status = FeedbackFilters::normalizeStatus( $req->getVal( 'status', 'new' ) );
+		$category = FeedbackFilters::normalizeCategory( $req->getVal( 'category', 'all' ) );
+		$sort = FeedbackFilters::normalizeSort( $req->getVal( 'sort', 'newest' ) );
+		$search = FeedbackFilters::sanitizeSearch( $req->getVal( 'q', '' ) );
 
 		$pageId = $req->getInt( 'pageid' ) ?: null;
 		$pagename = trim( (string)$req->getVal( 'pagename', '' ) );
@@ -303,6 +338,7 @@ class SpecialFeedback extends SpecialPage {
 			'pagename'     => $pagename !== '' ? $pagename : null,
 			'pageLabel'    => $pageLabel,
 			'pageNotFound' => $pageNotFound,
+			'search'       => $search,
 		];
 	}
 
@@ -325,10 +361,39 @@ class SpecialFeedback extends SpecialPage {
 		if ( !empty( $merged['pagename'] ) ) {
 			$q['pagename'] = $merged['pagename'];
 		}
+		if ( !empty( $merged['search'] ) ) {
+			$q['q'] = $merged['search'];
+		}
 		if ( isset( $merged['offset'] ) && $merged['offset'] !== null && $merged['offset'] !== '' ) {
 			$q['offset'] = (int)$merged['offset'];
 		}
 		return $q;
+	}
+
+	private function renderBulkToolbar(): string {
+		$html = Html::openElement( 'div', [ 'class' => 'spf-bulk-toolbar' ] );
+		$html .= Html::rawElement( 'label', [ 'class' => 'spf-bulk-select-all' ],
+			Html::input( 'spf-select-all', '1', 'checkbox', [ 'id' => 'spf-select-all' ] ) .
+			' ' . $this->msg( 'saintapediafeedback-bulk-select-all' )->escaped()
+		);
+		$html .= Html::openElement( 'select', [
+			'name' => 'spfbulkaction',
+			'id'   => 'spf-bulk-action',
+			'required' => 'required',
+		] );
+		$html .= Html::element( 'option', [ 'value' => '' ],
+			$this->msg( 'saintapediafeedback-bulk-action' )->text() );
+		foreach ( FeedbackFilters::processActions() as $status ) {
+			$html .= Html::element( 'option', [ 'value' => $status ],
+				$this->msg( 'saintapediafeedback-action-' . $status )->text() );
+		}
+		$html .= Html::closeElement( 'select' );
+		$html .= Html::submitButton(
+			$this->msg( 'saintapediafeedback-bulk-apply' )->text(),
+			[ 'class' => 'spf-filter-submit' ]
+		);
+		$html .= Html::closeElement( 'div' );
+		return $html;
 	}
 
 	/**
@@ -410,6 +475,21 @@ class SpecialFeedback extends SpecialPage {
 		] );
 		$html .= Html::closeElement( 'div' );
 
+		// Free-text search (comment + page title)
+		$html .= Html::openElement( 'div', [ 'class' => 'spf-filter-row' ] );
+		$html .= Html::label(
+			$this->msg( 'saintapediafeedback-filter-search' )->text(),
+			'spf-filter-q',
+			[ 'class' => 'spf-filter-label' ]
+		);
+		$html .= Html::input( 'q', (string)( $filters['search'] ?? '' ), 'search', [
+			'id'          => 'spf-filter-q',
+			'class'       => 'spf-lookup-input',
+			'placeholder' => $this->msg( 'saintapediafeedback-filter-search-placeholder' )->text(),
+			'size'        => 40,
+		] );
+		$html .= Html::closeElement( 'div' );
+
 		$html .= Html::openElement( 'div', [ 'class' => 'spf-filter-row' ] );
 
 		// Status
@@ -419,7 +499,7 @@ class SpecialFeedback extends SpecialPage {
 			[ 'class' => 'spf-filter-label' ]
 		);
 		$html .= Html::openElement( 'select', [ 'name' => 'status', 'id' => 'spf-filter-status' ] );
-		foreach ( array_merge( [ 'all' ], self::VALID_STATUSES ) as $status ) {
+		foreach ( array_merge( [ 'all' ], FeedbackFilters::VALID_STATUSES ) as $status ) {
 			$opt = [ 'value' => $status ];
 			if ( ( $filters['status'] ?? '' ) === $status ) {
 				$opt['selected'] = 'selected';
@@ -442,7 +522,7 @@ class SpecialFeedback extends SpecialPage {
 		}
 		$html .= Html::element( 'option', $allCat,
 			$this->msg( 'saintapediafeedback-filter-category-all' )->text() );
-		foreach ( self::VALID_CATEGORIES as $cat ) {
+		foreach ( FeedbackFilters::VALID_CATEGORIES as $cat ) {
 			$opt = [ 'value' => $cat ];
 			if ( ( $filters['category'] ?? '' ) === $cat ) {
 				$opt['selected'] = 'selected';
@@ -459,7 +539,7 @@ class SpecialFeedback extends SpecialPage {
 			[ 'class' => 'spf-filter-label' ]
 		);
 		$html .= Html::openElement( 'select', [ 'name' => 'sort', 'id' => 'spf-filter-sort' ] );
-		foreach ( [ 'newest', 'oldest' ] as $sort ) {
+		foreach ( FeedbackFilters::VALID_SORTS as $sort ) {
 			$opt = [ 'value' => $sort ];
 			if ( ( $filters['sort'] ?? '' ) === $sort ) {
 				$opt['selected'] = 'selected';
@@ -523,6 +603,14 @@ class SpecialFeedback extends SpecialPage {
 
 		$out->addHTML( '<div class="spf-feedback-item ' . $statusClass . '">' );
 		$out->addHTML( '<div class="spf-feedback-meta">' );
+		if ( $showPage ) {
+			$out->addHTML(
+				Html::input( 'spfids[]', (string)(int)$row->fb_id, 'checkbox', [
+					'class' => 'spf-row-check',
+					'form'  => 'spf-bulk-form',
+				] ) . ' '
+			);
+		}
 		$out->addHTML( '<span class="spf-id">#' . (int)$row->fb_id . '</span> ' );
 		$out->addHTML( '<span class="spf-time">' . htmlspecialchars( $time ) . '</span> ' );
 		$out->addHTML( '<span class="spf-mode spf-mode-' . htmlspecialchars( $row->fb_mode ) . '">'
