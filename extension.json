@@ -134,7 +134,7 @@
 		},
 		"SaintapediaFeedbackNotifyWatchers": {
 			"value": true,
-			"description": "When true and Echo is loaded, notify users watching the article that received feedback (encourages enterprise editors)."
+			"description": "When true and Echo is loaded, notify watchers of the article who may manage feedback (FeedbackAccess). Never notifies users who cannot open the dashboard."
 		},
 		"SaintapediaFeedbackShowPublicCounts": {
 			"value": false,

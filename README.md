@@ -184,7 +184,7 @@ php phpunit.phar -c phpunit.xml.dist
 See **[docs/FEEDBACK-LOOP.md](docs/FEEDBACK-LOOP.md)** for enterprise encouragement, Talk-page options, public counts, LLM/agent path, and future SME (Login.gov) priority feedback.
 
 ```php
-// Echo everyone watching the page (default true)
+// Echo watchers who can manage feedback (default true; never notifies users without dashboard access)
 $wgSaintapediaFeedbackNotifyWatchers = true;
 // Public open/resolved chip (no free text)
 $wgSaintapediaFeedbackShowPublicCounts = false;

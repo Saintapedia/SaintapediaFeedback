@@ -18,9 +18,6 @@
 		countResolved: mw.config.get( 'spfCountResolved' ) || 0
 	};
 
-// Ensure public-count message is available when config is on
-	// (registered on the ResourceLoader module).
-
 	var CATEGORIES = [
 		'inaccurate',
 		'outdated',

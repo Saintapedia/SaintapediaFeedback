@@ -67,9 +67,15 @@ class FeedbackNotifier {
 			}
 		}
 
+		// Watchers only if they may manage feedback — otherwise Echo would leak
+		// raw comments (extra.comment) to users who cannot open the dashboard.
 		if ( $config->get( 'SaintapediaFeedbackNotifyWatchers' ) ) {
+			$userFactory = MediaWikiServices::getInstance()->getUserFactory();
 			foreach ( self::getWatcherUserIds( $title ) as $wid ) {
-				$ids[] = $wid;
+				$user = $userFactory->newFromId( (int)$wid );
+				if ( $user->isRegistered() && FeedbackAccess::userCanManage( $user ) ) {
+					$ids[] = (int)$wid;
+				}
 			}
 		}
 
@@ -87,7 +93,8 @@ class FeedbackNotifier {
 	}
 
 	/**
-	 * Users watching this title (watchlist table).
+	 * Users watching this title (watchlist table). Callers must still filter by
+	 * FeedbackAccess::userCanManage() before sending protected content via Echo.
 	 *
 	 * @return int[]
 	 */

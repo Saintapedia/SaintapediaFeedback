@@ -395,6 +395,14 @@ class FeedbackStore {
 	}
 
 	/**
+	 * Append a status-change row to spf_feedback_log.
+	 *
+	 * Trade-off (intentional): failures are swallowed so a missing table during
+	 * migration or a transient DB error does not roll back the status change
+	 * itself. The denormalized last-actor fields on spf_feedback still update.
+	 * Consequence: the append-only history can have silent gaps; operators
+	 * should ensure update.php has run and watch the SaintapediaFeedback log.
+	 *
 	 * @param \Wikimedia\Rdbms\IDatabase $db
 	 */
 	private function insertStatusLog(
