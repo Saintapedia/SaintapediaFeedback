@@ -306,6 +306,11 @@ class SpecialFeedback extends SpecialPage {
 		];
 	}
 
+	/**
+	 * Build query params for dashboard links.
+	 * To clear the page filter, pass null pageId/pagename via $extra (or $filters);
+	 * !empty() omits them so they do not appear in the URL.
+	 */
 	private function filtersToQuery( array $filters, array $extra = [] ): array {
 		$merged = array_merge( $filters, $extra );
 		$q = [
@@ -313,18 +318,15 @@ class SpecialFeedback extends SpecialPage {
 			'category' => $merged['category'] ?? 'all',
 			'sort'     => $merged['sort'] ?? 'newest',
 		];
+		// null/empty pageId or pagename (clear filter) is intentionally omitted
 		if ( !empty( $merged['pageId'] ) ) {
 			$q['pageid'] = (int)$merged['pageId'];
 		}
 		if ( !empty( $merged['pagename'] ) ) {
 			$q['pagename'] = $merged['pagename'];
 		}
-		if ( isset( $merged['offset'] ) ) {
+		if ( isset( $merged['offset'] ) && $merged['offset'] !== null && $merged['offset'] !== '' ) {
 			$q['offset'] = (int)$merged['offset'];
-		}
-		// Allow explicit clear of page filter via null in $extra
-		if ( array_key_exists( 'pageId', $extra ) && $extra['pageId'] === null ) {
-			unset( $q['pageid'], $q['pagename'] );
 		}
 		return $q;
 	}
