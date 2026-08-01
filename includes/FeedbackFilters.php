@@ -50,8 +50,12 @@ class FeedbackFilters {
 	}
 
 	/**
-	 * Sanitize free-text search for LIKE queries.
+	 * Normalize free-text search for LIKE queries.
 	 * Returns empty string if nothing usable remains.
+	 *
+	 * Does not strip %, _, or \ — Database::buildLike() / LikeValue already escapes
+	 * those in literal fragments, so removing them only mangled legitimate searches
+	 * (e.g. "50%", "under_score").
 	 */
 	public static function sanitizeSearch( ?string $q ): string {
 		if ( $q === null ) {
@@ -61,9 +65,6 @@ class FeedbackFilters {
 		if ( $q === '' ) {
 			return '';
 		}
-		// Strip LIKE wildcards so user input cannot broaden the match pattern
-		$q = str_replace( [ '%', '_', '\\' ], '', $q );
-		$q = trim( $q );
 		if ( mb_strlen( $q ) > self::MAX_SEARCH_LENGTH ) {
 			$q = mb_substr( $q, 0, self::MAX_SEARCH_LENGTH );
 		}

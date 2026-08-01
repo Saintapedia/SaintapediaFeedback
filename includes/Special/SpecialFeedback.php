@@ -32,7 +32,8 @@ class SpecialFeedback extends SpecialPage {
 		$this->setHeaders();
 		$this->checkPermissions();
 		$out = $this->getOutput();
-		$out->addModuleStyles( [ 'mediawiki.special', 'ext.saintapediafeedback.special' ] );
+		// mediawiki.special is styles-only; our module is loaded once via addModules (scripts+styles)
+		$out->addModuleStyles( [ 'mediawiki.special' ] );
 		$out->addModules( 'ext.saintapediafeedback.special' );
 
 		$par = (string)( $par ?? '' );

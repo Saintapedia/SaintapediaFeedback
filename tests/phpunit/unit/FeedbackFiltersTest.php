@@ -31,11 +31,14 @@ class FeedbackFiltersTest extends TestCase {
 		$this->assertSame( 'oldest', FeedbackFilters::normalizeSort( 'oldest' ) );
 	}
 
-	public function testSanitizeSearchStripsWildcardsAndTrims(): void {
+	public function testSanitizeSearchTrimsAndPreservesLiterals(): void {
 		$this->assertSame( '', FeedbackFilters::sanitizeSearch( null ) );
 		$this->assertSame( '', FeedbackFilters::sanitizeSearch( '   ' ) );
 		$this->assertSame( 'hello', FeedbackFilters::sanitizeSearch( '  hello  ' ) );
-		$this->assertSame( 'abc', FeedbackFilters::sanitizeSearch( '%a_b\\c%' ) );
+		// LIKE metacharacters are escaped by buildLike(); keep them so users can find "50%" etc.
+		$this->assertSame( '50%', FeedbackFilters::sanitizeSearch( '50%' ) );
+		$this->assertSame( 'under_score', FeedbackFilters::sanitizeSearch( 'under_score' ) );
+		$this->assertSame( '%a_b\\c%', FeedbackFilters::sanitizeSearch( '%a_b\\c%' ) );
 	}
 
 	public function testSanitizeSearchMaxLength(): void {
