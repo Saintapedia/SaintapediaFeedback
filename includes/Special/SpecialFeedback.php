@@ -107,8 +107,9 @@ class SpecialFeedback extends SpecialPage {
 		$out->addHTML( $this->renderFilterForm( $filters ) );
 
 		if ( !empty( $filters['pageId'] ) && !empty( $filters['pageLabel'] ) ) {
+			// Pass clear overrides via $extra so filtersToQuery's null-page branch runs
 			$clearUrl = $this->getPageTitle()->getLocalURL(
-				$this->filtersToQuery( array_merge( $filters, [ 'pageId' => null, 'pagename' => null ] ) )
+				$this->filtersToQuery( $filters, [ 'pageId' => null, 'pagename' => null ] )
 			);
 			$out->addHTML(
 				Html::rawElement( 'p', [ 'class' => 'spf-dashboard-page-filter' ],
