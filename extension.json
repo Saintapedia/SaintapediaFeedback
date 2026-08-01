@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.4.0",
+	"version": "1.4.1",
 	"author": [ "Saintapedia contributors" ],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
@@ -139,6 +139,10 @@
 		"SaintapediaFeedbackShowPublicCounts": {
 			"value": false,
 			"description": "When true, show a small public chip with open vs resolved feedback counts on the article (no free-text). Default off — prefer public resolutions list instead."
+		},
+		"SaintapediaFeedbackEnableTalkLink": {
+			"value": true,
+			"description": "When true, show an optional checkbox on actioned to append a short Talk-page note linking to public resolutions (never dumps work notes or raw reader comments)."
 		}
 	},
 	"manifest_version": 2

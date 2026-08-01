@@ -7,6 +7,8 @@ use Html;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackFilters;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
+use MediaWiki\Extension\SaintapediaFeedback\TalkLinkPoster;
+use MediaWiki\MediaWikiServices;
 use PermissionsError;
 use SpecialPage;
 use Title;
@@ -276,9 +278,10 @@ class SpecialFeedback extends SpecialPage {
 
 		// Prefer scoped update when page id is known
 		$actorId = $this->getUser()->isRegistered() ? $this->getUser()->getId() : null;
+		$makePublic = $request->getCheck( 'spfpublic' );
 		$opts = [
 			'workNote' => $request->getText( 'spfworknote' ),
-			'resolutionPublic' => $request->getCheck( 'spfpublic' ),
+			'resolutionPublic' => $makePublic,
 			'resolutionSummary' => $request->getText( 'spfressummary' ),
 		];
 		$updated = $this->store->updateStatus(
@@ -289,12 +292,62 @@ class SpecialFeedback extends SpecialPage {
 			$opts
 		);
 
-		if ( $updated ) {
-			$this->getOutput()->addHTML(
-				'<div class="successbox">' .
-				$this->msg( 'saintapediafeedback-status-updated' )->escaped() .
-				'</div>'
+		if ( !$updated ) {
+			return;
+		}
+
+		$messages = [ $this->msg( 'saintapediafeedback-status-updated' )->escaped() ];
+
+		// Optional Talk note: short link only (never dumps work notes / raw feedback)
+		if (
+			$action === 'actioned'
+			&& $request->getCheck( 'spftalk' )
+			&& MediaWikiServices::getInstance()->getMainConfig()->get( 'SaintapediaFeedbackEnableTalkLink' )
+		) {
+			$article = $pageId > 0
+				? Title::newFromID( $pageId )
+				: null;
+			if ( !$article ) {
+				// Resolve page from the feedback row via store export-ish path
+				$article = $this->resolveArticleForFeedback( $fbId );
+			}
+			if ( $article ) {
+				$posted = TalkLinkPoster::postResolutionLink(
+					$article,
+					$fbId,
+					$this->getUser(),
+					$makePublic
+				);
+				if ( $posted ) {
+					$messages[] = $this->msg( 'saintapediafeedback-talk-posted' )->escaped();
+				} else {
+					$messages[] = $this->msg( 'saintapediafeedback-talk-failed' )->escaped();
+				}
+			}
+		}
+
+		$this->getOutput()->addHTML(
+			'<div class="successbox">' . implode( ' ', $messages ) . '</div>'
+		);
+	}
+
+	/**
+	 * @return Title|null
+	 */
+	private function resolveArticleForFeedback( int $fbId ) {
+		// Lightweight lookup via page-scoped store would need a getById; use DB through store counts path
+		try {
+			$services = MediaWikiServices::getInstance();
+			$dbr = $services->getDBLoadBalancer()->getConnection( DB_REPLICA );
+			$pageId = (int)$dbr->selectField(
+				'spf_feedback',
+				'fb_page_id',
+				[ 'fb_id' => $fbId ],
+				__METHOD__
 			);
+			return $pageId ? Title::newFromID( $pageId ) : null;
+		} catch ( \Throwable $e ) {
+			return null;
 		}
 	}
 
@@ -863,6 +916,18 @@ class SpecialFeedback extends SpecialPage {
 					'placeholder' => $this->msg( 'saintapediafeedback-resolution-summary-placeholder' )->text(),
 					'size' => 40,
 				] );
+				$talkEnabled = \MediaWiki\MediaWikiServices::getInstance()
+					->getMainConfig()
+					->get( 'SaintapediaFeedbackEnableTalkLink' );
+				if ( $talkEnabled ) {
+					$html .= Html::rawElement( 'label', [ 'class' => 'spf-public-check' ],
+						Html::input( 'spftalk', '1', 'checkbox' ) . ' '
+						. $this->msg( 'saintapediafeedback-post-talk-link' )->escaped()
+					);
+					$html .= Html::rawElement( 'p', [ 'class' => 'spf-action-hint' ],
+						$this->msg( 'saintapediafeedback-post-talk-hint' )->escaped()
+					);
+				}
 			}
 
 			$html .= Html::submitButton(

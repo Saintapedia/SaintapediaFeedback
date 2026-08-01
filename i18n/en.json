@@ -98,5 +98,13 @@
 	"saintapediafeedback-resolutions-need-page": "Open this page with a page id, e.g. Special:SaintapediaFeedback/resolutions/123.",
 	"saintapediafeedback-resolutions-empty": "No public resolutions for this article yet.",
 	"saintapediafeedback-resolutions-default-summary": "Addressed.",
-	"saintapediafeedback-resolutions-link": "Public resolutions for this page"
+	"saintapediafeedback-resolutions-link": "Public resolutions for this page",
+	"saintapediafeedback-post-talk-link": "Also post a short link on the article Talk page",
+	"saintapediafeedback-post-talk-hint": "Talk only gets a brief note + link to public resolutions — not your private work note or the original reader comment.",
+	"saintapediafeedback-talk-heading": "Reader feedback resolved",
+	"saintapediafeedback-talk-section": "Feedback '''#$1''' on $2 was marked as actioned. See $3 for public resolutions on this page.",
+	"saintapediafeedback-talk-section-public": "Feedback '''#$1''' on $2 was marked as actioned and a public resolution was published. See $3.",
+	"saintapediafeedback-talk-edit-summary": "Note: feedback #$1 actioned (link to public resolutions)",
+	"saintapediafeedback-talk-posted": "A short link was added on the Talk page.",
+	"saintapediafeedback-talk-failed": "Could not update the Talk page (check edit permissions or try again)."
 }
