@@ -43,6 +43,16 @@ class Hooks {
 		$enableEmail = $mode === 'enterprise' || $config->get( 'SaintapediaFeedbackEnableEmail' );
 		$captcha = CaptchaGate::prepareOutput( $out, $config );
 
+		$publicCounts = [ 'open' => 0, 'resolved' => 0, 'total' => 0 ];
+		if ( $config->get( 'SaintapediaFeedbackShowPublicCounts' ) ) {
+			try {
+				$store = MediaWikiServices::getInstance()->getService( 'SaintapediaFeedback.FeedbackStore' );
+				$publicCounts = $store->getPageCounts( $title->getArticleID() );
+			} catch ( \Throwable $e ) {
+				// ignore
+			}
+		}
+
 		$out->addJsConfigVars( [
 			'spfMode'                 => $mode,
 			'spfPageId'               => $title->getArticleID(),
@@ -51,6 +61,10 @@ class Hooks {
 			'spfRequireCaptcha'       => $captcha['requireCaptcha'],
 			'spfCaptchaMisconfigured' => $captcha['captchaMisconfigured'],
 			'spfHCaptchaSiteKey'      => $captcha['hCaptchaSiteKey'],
+			'spfShowPublicCounts'     => (bool)$config->get( 'SaintapediaFeedbackShowPublicCounts' ),
+			'spfCountOpen'            => (int)$publicCounts['open'],
+			'spfCountResolved'        => (int)$publicCounts['resolved'],
+			'spfCountTotal'           => (int)$publicCounts['total'],
 		] );
 
 		$out->addModules( 'ext.saintapediafeedback.widget' );
@@ -82,17 +96,47 @@ class Hooks {
 			(string)$title->getArticleID()
 		)->getLocalURL();
 
+		$counts = [ 'new' => 0, 'open' => 0 ];
+		try {
+			$store = MediaWikiServices::getInstance()->getService( 'SaintapediaFeedback.FeedbackStore' );
+			$counts = $store->getPageCounts( $title->getArticleID() );
+		} catch ( \Throwable $e ) {
+			// store/table may not exist yet
+		}
+
+		$text = $skin->msg( 'saintapediafeedback-toolbox' )->text();
+		if ( !empty( $counts['new'] ) ) {
+			$text = $skin->msg( 'saintapediafeedback-toolbox-count' )
+				->numParams( (int)$counts['new'] )
+				->text();
+		} elseif ( !empty( $counts['open'] ) ) {
+			$text = $skin->msg( 'saintapediafeedback-toolbox-open' )
+				->numParams( (int)$counts['open'] )
+				->text();
+		}
+
 		$sidebar['TOOLBOX']['saintapediafeedback'] = [
 			'id'   => 't-saintapediafeedback',
 			'href' => $url,
-			'text' => $skin->msg( 'saintapediafeedback-toolbox' )->text(),
+			'text' => $text,
 		];
 	}
 
 	public static function onLoadExtensionSchemaUpdates( DatabaseUpdater $updater ): void {
+		$dir = dirname( __DIR__ ) . '/sql';
 		$updater->addExtensionTable(
 			'spf_feedback',
-			dirname( __DIR__ ) . '/sql/tables.sql'
+			$dir . '/tables.sql'
+		);
+		$updater->addExtensionTable(
+			'spf_feedback_log',
+			$dir . '/feedback_log.sql'
+		);
+		// Incremental columns for installs that already had spf_feedback
+		$updater->addExtensionField(
+			'spf_feedback',
+			'fb_status_user_id',
+			$dir . '/patch-audit-priority.sql'
 		);
 	}
 

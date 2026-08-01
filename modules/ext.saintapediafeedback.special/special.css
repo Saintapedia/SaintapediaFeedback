@@ -301,3 +301,19 @@
 	background: #fff;
 	font-size: 0.875rem;
 }
+
+.spf-audit {
+	font-size: 0.8rem;
+	color: #54595d;
+	margin: 4px 0 6px;
+}
+
+.spf-priority-badge {
+	display: inline-block;
+	padding: 1px 8px;
+	border-radius: 999px;
+	background: #fef6e7;
+	color: #ac6600;
+	font-size: 0.75rem;
+	font-weight: 600;
+}

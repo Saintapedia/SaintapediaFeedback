@@ -80,5 +80,11 @@
 	"notification-link-saintapediafeedback-new": "Primary link label on the Echo notification",
 	"echo-pref-tooltip-saintapediafeedback": "Tooltip on Echo preference for this notification category",
 	"echo-category-title-saintapediafeedback": "Title of the Echo preference category",
-	"saintapediafeedback-access-help": "Subtitle on the dashboard. $1 = link to MediaWiki:SaintapediaFeedback-access."
+	"saintapediafeedback-access-help": "Subtitle on the dashboard. $1 = link to MediaWiki:SaintapediaFeedback-access.",
+	"saintapediafeedback-toolbox-count": "Toolbox link when there are new items. $1 = new count.",
+	"saintapediafeedback-toolbox-open": "Toolbox link when there are open (new+reviewed) items but no new. $1 = open count.",
+	"saintapediafeedback-audit-by": "Audit line. $1 = username, $2 = time.",
+	"saintapediafeedback-audit-unknown": "Audit line without username. $1 = time.",
+	"saintapediafeedback-priority-sme": "Badge for high-priority / SME-authenticated feedback",
+	"saintapediafeedback-public-counts": "Public chip. $1 = open count, $2 = resolved (actioned) count."
 }

@@ -80,5 +80,11 @@
 	"notification-link-saintapediafeedback-new": "View feedback",
 	"echo-pref-tooltip-saintapediafeedback": "Notifications when readers submit article feedback",
 	"echo-category-title-saintapediafeedback": "Article feedback",
-	"saintapediafeedback-access-help": "Who can use this dashboard is configured on $1 (one MediaWiki group per line; default is all logged-in users)."
+	"saintapediafeedback-access-help": "Who can use this dashboard is configured on $1 (one MediaWiki group per line; default is all logged-in users).",
+	"saintapediafeedback-toolbox-count": "Page feedback ($1 new)",
+	"saintapediafeedback-toolbox-open": "Page feedback ($1 open)",
+	"saintapediafeedback-audit-by": "Status last set by '''$1''' on $2",
+	"saintapediafeedback-audit-unknown": "Status last set on $1",
+	"saintapediafeedback-priority-sme": "SME / priority",
+	"saintapediafeedback-public-counts": "$1 open · $2 resolved"
 }

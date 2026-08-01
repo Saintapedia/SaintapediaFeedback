@@ -30,11 +30,41 @@ class FeedbackStore {
 				'fb_contact_email'  => $data['contactEmail'] ?? null,
 				'fb_mode'           => $data['mode'],
 				'fb_status'         => 'new',
+				'fb_priority'       => (int)( $data['priority'] ?? 0 ),
 				'fb_timestamp'      => $db->timestamp(),
 			],
 			__METHOD__
 		);
 		return $db->insertId();
+	}
+
+	/**
+	 * Counts for a page: open (new+reviewed), resolved (actioned), total, new-only.
+	 *
+	 * @return array{open:int,resolved:int,total:int,new:int}
+	 */
+	public function getPageCounts( int $pageId ): array {
+		$db = $this->loadBalancer->getConnection( DB_REPLICA );
+		$res = $db->select(
+			'spf_feedback',
+			[ 'fb_status', 'cnt' => 'COUNT(*)' ],
+			[ 'fb_page_id' => $pageId ],
+			__METHOD__,
+			[ 'GROUP BY' => 'fb_status' ]
+		);
+		$by = [ 'new' => 0, 'reviewed' => 0, 'actioned' => 0, 'dismissed' => 0 ];
+		foreach ( $res as $row ) {
+			$by[(string)$row->fb_status] = (int)$row->cnt;
+		}
+		$open = $by['new'] + $by['reviewed'];
+		$resolved = $by['actioned'];
+		$total = array_sum( $by );
+		return [
+			'open'     => $open,
+			'resolved' => $resolved,
+			'total'    => $total,
+			'new'      => $by['new'],
+		];
 	}
 
 	/** Count submissions from a given IP hash within the past 24 hours. */
@@ -174,27 +204,6 @@ class FeedbackStore {
 		return [ $conds, $options ];
 	}
 
-	/**
-	 * Bulk-update workflow status for many feedback ids.
-	 *
-	 * @param int[] $ids
-	 * @return int Number of rows updated
-	 */
-	public function updateStatusBulk( array $ids, string $status ): int {
-		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
-		if ( !$ids || !in_array( $status, FeedbackFilters::processActions(), true ) ) {
-			return 0;
-		}
-		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
-		$db->update(
-			'spf_feedback',
-			[ 'fb_status' => $status ],
-			[ 'fb_id' => $ids ],
-			__METHOD__
-		);
-		return $db->affectedRows();
-	}
-
 	/** Fetch unprocessed feedback rows for LLM batch processing. */
 	public function getPendingLlmBatch( int $limit = 100 ): array {
 		$db = $this->loadBalancer->getConnection( DB_REPLICA );
@@ -231,26 +240,102 @@ class FeedbackStore {
 	}
 
 	/**
-	 * Update workflow status for a feedback row.
+	 * Update workflow status for a feedback row and append an audit log entry.
 	 *
 	 * When $pageId is provided, the row must belong to that page (prevents
 	 * cross-page status mutation from the special-page UI).
 	 *
+	 * @param int|null $actorUserId User who performed the change (null = system)
 	 * @return bool True if a matching row was updated
 	 */
-	public function updateStatus( int $id, string $status, ?int $pageId = null ): bool {
+	public function updateStatus(
+		int $id,
+		string $status,
+		?int $pageId = null,
+		?int $actorUserId = null
+	): bool {
 		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
 		$conds = [ 'fb_id' => $id ];
 		if ( $pageId !== null ) {
 			$conds['fb_page_id'] = $pageId;
 		}
+
+		$old = $db->selectField( 'spf_feedback', 'fb_status', $conds, __METHOD__ );
+		if ( $old === false ) {
+			return false;
+		}
+		if ( (string)$old === $status ) {
+			return true;
+		}
+
+		$ts = $db->timestamp();
 		$db->update(
 			'spf_feedback',
-			[ 'fb_status' => $status ],
+			[
+				'fb_status'           => $status,
+				'fb_status_user_id'   => $actorUserId,
+				'fb_status_timestamp' => $ts,
+			],
 			$conds,
 			__METHOD__
 		);
-		return $db->affectedRows() > 0;
+		if ( !$db->affectedRows() ) {
+			return false;
+		}
+		$this->insertStatusLog( $db, $id, $actorUserId, (string)$old, $status, $ts );
+		return true;
+	}
+
+	/**
+	 * Bulk-update workflow status for many feedback ids (with audit).
+	 *
+	 * @param int[] $ids
+	 * @return int Number of rows updated
+	 */
+	public function updateStatusBulk( array $ids, string $status, ?int $actorUserId = null ): int {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
+		if ( !$ids || !in_array( $status, FeedbackFilters::processActions(), true ) ) {
+			return 0;
+		}
+		$n = 0;
+		foreach ( $ids as $id ) {
+			if ( $this->updateStatus( $id, $status, null, $actorUserId ) ) {
+				$n++;
+			}
+		}
+		return $n;
+	}
+
+	/**
+	 * @param \Wikimedia\Rdbms\IDatabase $db
+	 */
+	private function insertStatusLog(
+		$db,
+		int $fbId,
+		?int $actorUserId,
+		?string $oldStatus,
+		string $newStatus,
+		string $ts
+	): void {
+		// Table may be missing on partial upgrades — fail soft
+		try {
+			if ( !$db->tableExists( 'spf_feedback_log', __METHOD__ ) ) {
+				return;
+			}
+			$db->insert(
+				'spf_feedback_log',
+				[
+					'log_fb_id'       => $fbId,
+					'log_user_id'     => $actorUserId,
+					'log_old_status'  => $oldStatus,
+					'log_new_status'  => $newStatus,
+					'log_timestamp'   => $ts,
+				],
+				__METHOD__
+			);
+		} catch ( \Throwable $e ) {
+			wfDebugLog( 'SaintapediaFeedback', 'audit log insert failed: ' . $e->getMessage() );
+		}
 	}
 
 	/** Export feedback for a page as structured data for LLM consumption. */

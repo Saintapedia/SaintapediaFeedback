@@ -173,6 +173,17 @@ php phpunit.phar -c phpunit.xml.dist
 ./vendor/bin/phpunit -c phpunit.xml.dist
 ```
 
+## Completing the loop
+
+See **[docs/FEEDBACK-LOOP.md](docs/FEEDBACK-LOOP.md)** for enterprise encouragement, Talk-page options, public counts, LLM/agent path, and future SME (Login.gov) priority feedback.
+
+```php
+// Echo everyone watching the page (default true)
+$wgSaintapediaFeedbackNotifyWatchers = true;
+// Public open/resolved chip (no free text)
+$wgSaintapediaFeedbackShowPublicCounts = false;
+```
+
 ## Version
 
-**1.3.0** — dashboard, search, bulk process, editor toolbox link, optional Echo/email notify, docs and unit tests.
+**1.4.0** — audit trail, toolbox counts, watchlist Echo, optional public counts, priority column for future SME, access config page.

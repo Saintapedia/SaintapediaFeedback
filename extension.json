@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.3.1",
+	"version": "1.4.0",
 	"author": [ "Saintapedia contributors" ],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
@@ -76,7 +76,8 @@
 				"saintapediafeedback-error-nocategory",
 				"saintapediafeedback-error-captcha",
 				"saintapediafeedback-error-captcha-unavailable",
-				"saintapediafeedback-error-namespace"
+				"saintapediafeedback-error-namespace",
+				"saintapediafeedback-public-counts"
 			],
 			"dependencies": [ "mediawiki.api", "mediawiki.user", "mediawiki.util" ]
 		},
@@ -128,6 +129,14 @@
 		"SaintapediaFeedbackAccessGroups": {
 			"value": [ "user" ],
 			"description": "Default groups when the access page is missing or empty. 'user' = all logged-in accounts (option C). Override via the MediaWiki access page."
+		},
+		"SaintapediaFeedbackNotifyWatchers": {
+			"value": true,
+			"description": "When true and Echo is loaded, notify users watching the article that received feedback (encourages enterprise editors)."
+		},
+		"SaintapediaFeedbackShowPublicCounts": {
+			"value": false,
+			"description": "When true, show a small public chip with open vs resolved feedback counts on the article (no free-text)."
 		}
 	},
 	"manifest_version": 2

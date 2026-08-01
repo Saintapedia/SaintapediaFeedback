@@ -12,8 +12,14 @@
 		enableEmail: mw.config.get( 'spfEnableEmail' ) || false,
 		requireCaptcha: mw.config.get( 'spfRequireCaptcha' ) || false,
 		captchaMisconfigured: mw.config.get( 'spfCaptchaMisconfigured' ) || false,
-		hCaptchaSiteKey: mw.config.get( 'spfHCaptchaSiteKey' ) || ''
+		hCaptchaSiteKey: mw.config.get( 'spfHCaptchaSiteKey' ) || '',
+		showPublicCounts: mw.config.get( 'spfShowPublicCounts' ) || false,
+		countOpen: mw.config.get( 'spfCountOpen' ) || 0,
+		countResolved: mw.config.get( 'spfCountResolved' ) || 0
 	};
+
+// Ensure public-count message is available when config is on
+	// (registered on the ResourceLoader module).
 
 	var CATEGORIES = [
 		'inaccurate',
@@ -383,6 +389,22 @@
 
 	/* ── Init ──────────────────────────────────────────────────────────── */
 
+	function buildPublicCountChip() {
+		if ( !config.showPublicCounts ) {
+			return null;
+		}
+		var open = parseInt( config.countOpen, 10 ) || 0;
+		var resolved = parseInt( config.countResolved, 10 ) || 0;
+		if ( !open && !resolved ) {
+			return null;
+		}
+		var label = mw.msg( 'saintapediafeedback-public-counts', open, resolved );
+		return el( 'div', {
+			class: 'spf-public-counts',
+			title: label
+		}, [ label ] );
+	}
+
 	function init() {
 		if ( !config.pageId ) {
 			return;
@@ -394,6 +416,10 @@
 
 		var widgets = buildWidget();
 		var container = el( 'div', { class: 'spf-container spf-mode-' + config.mode } );
+		var chip = buildPublicCountChip();
+		if ( chip ) {
+			container.appendChild( chip );
+		}
 		container.appendChild( widgets.backdrop );
 		container.appendChild( widgets.fab );
 		container.appendChild( widgets.panel );

@@ -268,10 +268,12 @@ class SpecialFeedback extends SpecialPage {
 		}
 
 		// Prefer scoped update when page id is known
+		$actorId = $this->getUser()->isRegistered() ? $this->getUser()->getId() : null;
 		$updated = $this->store->updateStatus(
 			$fbId,
 			$action,
-			$pageId > 0 ? $pageId : null
+			$pageId > 0 ? $pageId : null,
+			$actorId
 		);
 
 		if ( $updated ) {
@@ -303,7 +305,8 @@ class SpecialFeedback extends SpecialPage {
 		if ( !is_array( $ids ) ) {
 			$ids = [];
 		}
-		$n = $this->store->updateStatusBulk( $ids, $action );
+		$actorId = $this->getUser()->isRegistered() ? $this->getUser()->getId() : null;
+		$n = $this->store->updateStatusBulk( $ids, $action, $actorId );
 		$this->getOutput()->addHTML(
 			'<div class="successbox">' .
 			$this->msg( 'saintapediafeedback-bulk-updated' )->numParams( $n )->escaped() .
@@ -657,7 +660,37 @@ class SpecialFeedback extends SpecialPage {
 		$out->addHTML( '<span class="spf-status spf-status-badge">'
 			. htmlspecialchars( $this->msg( 'saintapediafeedback-status-' . $row->fb_status )->text() )
 			. '</span>' );
+		if ( !empty( $row->fb_priority ) ) {
+			$out->addHTML( ' <span class="spf-priority-badge">'
+				. $this->msg( 'saintapediafeedback-priority-sme' )->escaped()
+				. '</span>' );
+		}
 		$out->addHTML( '</div>' );
+
+		// Audit: last status change
+		if ( !empty( $row->fb_status_timestamp ) ) {
+			$actor = '';
+			if ( !empty( $row->fb_status_user_id ) ) {
+				$u = \MediaWiki\MediaWikiServices::getInstance()
+					->getUserFactory()
+					->newFromId( (int)$row->fb_status_user_id );
+				if ( $u && $u->isRegistered() ) {
+					$actor = $u->getName();
+				}
+			}
+			$statusTime = $this->getLanguage()->userTimeAndDate(
+				$row->fb_status_timestamp,
+				$this->getUser()
+			);
+			if ( $actor !== '' ) {
+				$auditHtml = $this->msg( 'saintapediafeedback-audit-by' )
+					->params( $actor, $statusTime )->parse();
+			} else {
+				$auditHtml = $this->msg( 'saintapediafeedback-audit-unknown' )
+					->params( $statusTime )->parse();
+			}
+			$out->addHTML( '<div class="spf-audit">' . $auditHtml . '</div>' );
+		}
 
 		if ( $showPage ) {
 			$pageTitle = Title::newFromID( (int)$row->fb_page_id );
