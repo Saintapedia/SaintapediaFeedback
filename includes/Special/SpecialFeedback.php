@@ -278,7 +278,15 @@ class SpecialFeedback extends SpecialPage {
 
 		// Prefer scoped update when page id is known
 		$actorId = $this->getUser()->isRegistered() ? $this->getUser()->getId() : null;
-		$makePublic = $request->getCheck( 'spfpublic' );
+		// Actioned → public by default. Checkbox is checked by default; spfpublic_present
+		// means the form included the control (unchecked = not in POST).
+		if ( $action === 'actioned' ) {
+			$makePublic = $request->getCheck( 'spfpublic_present' )
+				? $request->getCheck( 'spfpublic' )
+				: true;
+		} else {
+			$makePublic = false;
+		}
 		$opts = [
 			'workNote' => $request->getText( 'spfworknote' ),
 			'resolutionPublic' => $makePublic,
@@ -917,8 +925,10 @@ class SpecialFeedback extends SpecialPage {
 					'rows' => 2,
 					'placeholder' => $this->msg( 'saintapediafeedback-work-note-placeholder' )->text(),
 				] );
+				// Default checked: actioned → public resolutions list
+				$html .= Html::hidden( 'spfpublic_present', '1' );
 				$html .= Html::rawElement( 'label', [ 'class' => 'spf-public-check' ],
-					Html::input( 'spfpublic', '1', 'checkbox' ) . ' '
+					Html::input( 'spfpublic', '1', 'checkbox', [ 'checked' => 'checked' ] ) . ' '
 					. $this->msg( 'saintapediafeedback-make-public' )->escaped()
 				);
 				$html .= Html::input( 'spfressummary', '', 'text', [
