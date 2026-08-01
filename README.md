@@ -105,7 +105,9 @@ If the config page is missing or empty, **any registered account** can open the 
 
 ### Change who has access
 
-Edit **`MediaWiki:SaintapediaFeedback-access`** (sysops only by default — MediaWiki namespace is protected).
+Edit **`MediaWiki:SaintapediaFeedback-access`**.
+
+That page lives in the **MediaWiki** namespace, which core restricts to users with the **`editinterface`** right (by default **sysop** and **interface-admin**). Ordinary editors cannot change who has dashboard access.
 
 One group (or token) per line:
 
@@ -127,7 +129,11 @@ user
 | `editor` | Your wiki’s editor group (if you have one) |
 | `*` | Everyone including anons (not recommended) |
 
-Blank lines and `#` comments are ignored. After you save, cache is invalidated automatically.
+Blank lines and `#` comments are ignored. Cache invalidates on **save, delete, or move** of the access page.
+
+### Blocks
+
+**A site/user block revokes dashboard access**, even under the default “any logged-in user” model. Blocking someone is enough to stop bulk-process/export abuse; you do not need to also remove them from a group. (Matches the submit API’s block check.)
 
 ### LocalSettings overrides
 
@@ -138,16 +144,16 @@ $wgSaintapediaFeedbackAccessGroups = [ 'user' ];
 // Rename the config page (MediaWiki-namespace DB key, no prefix)
 // $wgSaintapediaFeedbackAccessPage = 'SaintapediaFeedback-access';
 
-// Always-on via right (bypasses the page list) — sysop has this by default
+// Always-on via right (still subject to blocks) — sysop has this by default
 $wgGroupPermissions['sysop']['saintapediafeedback-view'] = true;
 $wgGroupPermissions['editor']['saintapediafeedback-view'] = true;
 ```
 
-Anyone who has the **`saintapediafeedback-view`** right **or** matches a group on the access page can manage feedback.
+Anyone who has the **`saintapediafeedback-view`** right **or** matches a group on the access page can manage feedback — unless they are blocked.
 
 | Right | Default | Meaning |
 |-------|---------|---------|
-| `saintapediafeedback-view` | sysop | Always allowed (plus groups on the access page) |
+| `saintapediafeedback-view` | sysop | Allowed if not blocked (plus groups on the access page) |
 ## Security model (public)
 
 - Anyone can submit (no login).

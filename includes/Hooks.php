@@ -6,6 +6,7 @@ use DatabaseUpdater;
 use MediaWiki\Config\Config;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Output\OutputPage;
+use MediaWiki\Title\Title;
 use Skin;
 use SpecialPage;
 
@@ -147,12 +148,6 @@ class Hooks {
 
 	/**
 	 * Invalidate access-group cache when MediaWiki:SaintapediaFeedback-access is edited.
-	 *
-	 * @param WikiPage $wikiPage
-	 * @param UserIdentity $user
-	 * @param string $summary
-	 * @param int $flags
-	 * @param EditResult $editResult
 	 */
 	public static function onPageSaveComplete(
 		$wikiPage,
@@ -162,7 +157,69 @@ class Hooks {
 		$revisionRecord,
 		$editResult
 	): void {
-		$title = $wikiPage->getTitle();
+		self::maybeInvalidateAccessCache( $wikiPage->getTitle() );
+	}
+
+	/**
+	 * Deleting the access page must reset to PHP defaults immediately (not wait TTL).
+	 */
+	public static function onPageDeleteComplete(
+		$page,
+		$deleter,
+		$reason,
+		$pageID,
+		$deletedRev,
+		$logEntry,
+		$archivedRevisionCount
+	): void {
+		try {
+			$title = Title::castFromPageIdentity( $page );
+		} catch ( \Throwable $e ) {
+			$title = null;
+		}
+		if ( !$title && is_object( $page ) && method_exists( $page, 'getDBkey' ) ) {
+			// Older signatures sometimes pass Title-like objects
+			$title = Title::makeTitleSafe( $page->getNamespace(), $page->getDBkey() );
+		}
+		self::maybeInvalidateAccessCache( $title );
+	}
+
+	/**
+	 * Moving/renaming the access page must not leave a stale cache entry.
+	 */
+	public static function onPageMoveComplete(
+		$old,
+		$new,
+		$user,
+		$pageid,
+		$redirid,
+		$reason,
+		$revision
+	): void {
+		$access = FeedbackAccess::getAccessPageTitle();
+		if ( !$access ) {
+			return;
+		}
+		foreach ( [ $old, $new ] as $lt ) {
+			try {
+				$t = Title::newFromLinkTarget( $lt );
+				if ( $t && ( $t->equals( $access ) || $t->getPrefixedText() === $access->getPrefixedText() ) ) {
+					FeedbackAccess::invalidateCache();
+					return;
+				}
+			} catch ( \Throwable $e ) {
+				// ignore
+			}
+		}
+	}
+
+	/**
+	 * @param \MediaWiki\Title\Title|Title|null $title
+	 */
+	private static function maybeInvalidateAccessCache( $title ): void {
+		if ( !$title ) {
+			return;
+		}
 		$access = FeedbackAccess::getAccessPageTitle();
 		if ( $access && $title->equals( $access ) ) {
 			FeedbackAccess::invalidateCache();

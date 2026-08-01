@@ -43,7 +43,9 @@
 		"SidebarBeforeOutput": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onSidebarBeforeOutput",
 		"LoadExtensionSchemaUpdates": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onLoadExtensionSchemaUpdates",
 		"BeforeCreateEchoEvent": "MediaWiki\\Extension\\SaintapediaFeedback\\Notifications\\EchoHooks::onBeforeCreateEchoEvent",
-		"PageSaveComplete": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onPageSaveComplete"
+		"PageSaveComplete": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onPageSaveComplete",
+		"PageDeleteComplete": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onPageDeleteComplete",
+		"PageMoveComplete": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onPageMoveComplete"
 	},
 	"ResourceModules": {
 		"ext.saintapediafeedback.widget": {

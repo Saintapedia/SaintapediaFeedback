@@ -37,7 +37,14 @@ class FeedbackAccess {
 			? $user
 			: MediaWikiServices::getInstance()->getUserFactory()->newFromUserIdentity( $user );
 
-		// Explicit right from LocalSettings / extension.json always wins
+		// Blocks revoke dashboard access (including option-C "any registered" users).
+		// Mirrors ApiSubmitFeedback: any block (incl. partial) is enough to deny.
+		// Admins must not assume "block" alone is a no-op under the broad default.
+		if ( self::userIsBlocked( $userObj ) ) {
+			return false;
+		}
+
+		// Explicit right from LocalSettings / extension.json
 		if ( $userObj->isAllowed( 'saintapediafeedback-view' ) ) {
 			return true;
 		}
@@ -69,6 +76,21 @@ class FeedbackAccess {
 			}
 		}
 
+		return false;
+	}
+
+	/**
+	 * @param User $user
+	 */
+	private static function userIsBlocked( User $user ): bool {
+		// Prefer Authority when available (MW 1.39+)
+		try {
+			if ( method_exists( $user, 'getBlock' ) ) {
+				return (bool)$user->getBlock();
+			}
+		} catch ( \Throwable $e ) {
+			// fall through
+		}
 		return false;
 	}
 
