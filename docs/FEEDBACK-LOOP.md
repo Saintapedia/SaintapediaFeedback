@@ -11,7 +11,7 @@ Product direction for SaintapediaFeedback: help **enterprise editors** improve p
 | Toolbox count | Yes — “Page feedback (N new)” for managers |
 | **Public count chip** | **Default off** — use public *resolutions* instead of a noisy badge |
 | Watchlist Echo | Default **on** — only watchers who **may manage** feedback (same gate as dashboard; no comment leak to casual watchers) |
-| **Talk pages** | **Do not auto-post.** Keep work notes on the dashboard |
+| **Talk pages** | **No auto-post.** Optional checkbox: short **link only** to public resolutions |
 | **Actioned → public** | Optional: publish a short **resolution** (not the raw reader comment) on a public list |
 | LLM | Export/batch ready; proactive AI edits via future job |
 | SME auth | `fb_priority` reserved; Login.gov-class IdP later |
@@ -25,16 +25,18 @@ Product direction for SaintapediaFeedback: help **enterprise editors** improve p
 | Reader feedback | Dashboard only | Managers |
 | **Work note** (private) | Dashboard when processing | Managers only |
 | **Public resolution** | `Special:SaintapediaFeedback/resolutions/<pageid>` | Anyone |
-| Talk page | Optional later / human-written | Watchers of Talk |
+| **Talk (optional)** | Checkbox on actioned → short section + link | Talk watchers |
 
-**Recommended UX when marking actioned:**
+**UX when marking actioned:**
 
-1. **Encourage** a private work note (“what did you change?”) — recommended, not hard-required.  
-2. Optional checkbox: **Publish this resolution**.  
-3. Optional short **public summary** (safe text only).  
-4. **No automatic Talk edit** — avoids clutter; transparency lives on the public resolutions list.
+1. **Encourage** a private work note (“what did you change?”) — recommended, not required.  
+2. Optional: **Publish this resolution** (+ short public summary).  
+3. Optional: **Also post a short link on Talk** (`$wgSaintapediaFeedbackEnableTalkLink`, default true) — only a heading + link to public resolutions, **never** work notes or raw reader text.  
+4. De-duplicated per feedback id (HTML comment marker).
 
-If a wiki wants Talk noise, editors can still paste a one-liner and link to `/resolutions/<pageid>` themselves.
+```php
+$wgSaintapediaFeedbackEnableTalkLink = true; // show Talk checkbox; false to hide
+```
 
 ## Enterprise encouragement
 

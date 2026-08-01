@@ -98,5 +98,13 @@
 	"saintapediafeedback-resolutions-need-page": "Shown when resolutions URL has no page id",
 	"saintapediafeedback-resolutions-empty": "Empty public resolutions list",
 	"saintapediafeedback-resolutions-default-summary": "Fallback public text when no summary was entered",
-	"saintapediafeedback-resolutions-link": "Link from dashboard row to public resolutions for that page"
+	"saintapediafeedback-resolutions-link": "Link from dashboard row to public resolutions for that page",
+	"saintapediafeedback-post-talk-link": "Checkbox on actioned form to post a short Talk note",
+	"saintapediafeedback-post-talk-hint": "Help under the Talk checkbox",
+	"saintapediafeedback-talk-heading": "Talk page section heading (content language)",
+	"saintapediafeedback-talk-section": "Talk section body. $1 = feedback id, $2 = article wikilink, $3 = resolutions wikilink.",
+	"saintapediafeedback-talk-section-public": "Talk section when resolution was published. $1 id, $2 article, $3 resolutions link.",
+	"saintapediafeedback-talk-edit-summary": "Edit summary for Talk note. $1 = feedback id.",
+	"saintapediafeedback-talk-posted": "Success message after Talk note",
+	"saintapediafeedback-talk-failed": "Error message if Talk edit failed"
 }

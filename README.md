@@ -188,6 +188,8 @@ See **[docs/FEEDBACK-LOOP.md](docs/FEEDBACK-LOOP.md)** for enterprise encouragem
 $wgSaintapediaFeedbackNotifyWatchers = true;
 // Public open/resolved chip (no free text)
 $wgSaintapediaFeedbackShowPublicCounts = false;
+// Optional checkbox on actioned: short Talk link only (default true)
+$wgSaintapediaFeedbackEnableTalkLink = true;
 ```
 
 ## Version
