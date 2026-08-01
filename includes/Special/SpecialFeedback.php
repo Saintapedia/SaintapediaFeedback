@@ -50,18 +50,35 @@ class SpecialFeedback extends SpecialPage {
 		// Status mutations (POST + CSRF) before rendering
 		$this->handleStatusUpdate();
 
-		$pageId = 0;
+		// Subpage form Special:SaintapediaFeedback/<pageid> → per-article view.
+		// Query ?pageid= is reserved for dashboard filtering (not page view).
 		if ( $par !== '' && ctype_digit( $par ) ) {
-			$pageId = (int)$par;
-		} elseif ( $request->getInt( 'pageid' ) ) {
-			$pageId = $request->getInt( 'pageid' );
+			$this->showPageFeedback( (int)$par );
+			return;
 		}
 
-		if ( $pageId ) {
-			$this->showPageFeedback( $pageId );
-		} else {
-			$this->showDashboard();
+		// Title lookup: jump to per-article view by name (restores pre-dashboard UX).
+		// Uses dedicated submit name so filter "Apply" does not redirect.
+		if ( $request->getCheck( 'spf_goto' ) ) {
+			$pagename = trim( (string)$request->getVal( 'pagename', '' ) );
+			if ( $pagename !== '' ) {
+				$title = Title::newFromText( $pagename );
+				if ( $title && $title->exists() ) {
+					$this->getOutput()->redirect(
+						$this->getPageTitle( (string)$title->getArticleID() )->getLocalURL()
+					);
+					return;
+				}
+				// Fall through to dashboard with a not-found notice
+				$this->getOutput()->addHTML(
+					'<div class="errorbox">' .
+					$this->msg( 'saintapediafeedback-special-notfound' )->escaped() .
+					'</div>'
+				);
+			}
 		}
+
+		$this->showDashboard();
 	}
 
 	private function showDashboard(): void {
@@ -72,12 +89,38 @@ class SpecialFeedback extends SpecialPage {
 		$offset = max( 0, $this->getRequest()->getInt( 'offset' ) );
 		$limit = self::PAGE_SIZE;
 
+		// Title typed into filter form → resolve to pageId for dashboard filter
+		if ( !empty( $filters['pageNotFound'] ) ) {
+			$out->addHTML(
+				'<div class="errorbox">' .
+				$this->msg( 'saintapediafeedback-special-notfound' )->escaped() .
+				'</div>'
+			);
+		}
+
 		$counts = $this->store->countByStatus( $filters );
 		$total = $this->store->countDashboard( $filters );
 		$rows = $this->store->getDashboard( $filters, $limit, $offset );
 
+		$out->addHTML( $this->renderPageLookupForm() );
 		$out->addHTML( $this->renderSummaryChips( $counts, $filters ) );
 		$out->addHTML( $this->renderFilterForm( $filters ) );
+
+		if ( !empty( $filters['pageId'] ) && !empty( $filters['pageLabel'] ) ) {
+			$clearUrl = $this->getPageTitle()->getLocalURL(
+				$this->filtersToQuery( array_merge( $filters, [ 'pageId' => null, 'pagename' => null ] ) )
+			);
+			$out->addHTML(
+				Html::rawElement( 'p', [ 'class' => 'spf-dashboard-page-filter' ],
+					$this->msg( 'saintapediafeedback-dashboard-filtered-page' )
+						->rawParams( htmlspecialchars( $filters['pageLabel'] ) )
+						->parse() .
+					' · ' .
+					Html::element( 'a', [ 'href' => $clearUrl ],
+						$this->msg( 'saintapediafeedback-dashboard-clear-page' )->text() )
+				)
+			);
+		}
 
 		if ( !$rows ) {
 			$out->addWikiMsg( 'saintapediafeedback-dashboard-empty' );
@@ -206,7 +249,12 @@ class SpecialFeedback extends SpecialPage {
 		], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE );
 	}
 
-	/** @return array{status:?string,category:?string,sort:string,pageId:?int} */
+	/**
+	 * @return array{
+	 *   status:string,category:string,sort:string,pageId:?int,
+	 *   pagename:?string,pageLabel:?string,pageNotFound:bool
+	 * }
+	 */
 	private function getFiltersFromRequest(): array {
 		$req = $this->getRequest();
 		$status = $req->getVal( 'status', 'new' );
@@ -221,26 +269,98 @@ class SpecialFeedback extends SpecialPage {
 		if ( !in_array( $sort, [ 'newest', 'oldest' ], true ) ) {
 			$sort = 'newest';
 		}
+
 		$pageId = $req->getInt( 'pageid' ) ?: null;
+		$pagename = trim( (string)$req->getVal( 'pagename', '' ) );
+		$pageLabel = null;
+		$pageNotFound = false;
+
+		// Resolve article title → pageId for dashboard filtering (and redisplay label)
+		if ( $pagename !== '' && !$req->getCheck( 'spf_goto' ) ) {
+			$title = Title::newFromText( $pagename );
+			if ( $title && $title->exists() ) {
+				$pageId = $title->getArticleID();
+				$pageLabel = $title->getPrefixedText();
+				$pagename = $pageLabel;
+			} else {
+				$pageNotFound = true;
+				$pageId = null;
+			}
+		} elseif ( $pageId ) {
+			$title = Title::newFromID( $pageId );
+			if ( $title ) {
+				$pageLabel = $title->getPrefixedText();
+				$pagename = $pageLabel;
+			}
+		}
 
 		return [
-			'status'   => $status,
-			'category' => $category,
-			'sort'     => $sort,
-			'pageId'   => $pageId,
+			'status'       => $status,
+			'category'     => $category,
+			'sort'         => $sort,
+			'pageId'       => $pageId,
+			'pagename'     => $pagename !== '' ? $pagename : null,
+			'pageLabel'    => $pageLabel,
+			'pageNotFound' => $pageNotFound,
 		];
 	}
 
 	private function filtersToQuery( array $filters, array $extra = [] ): array {
-		$q = array_merge( [
-			'status'   => $filters['status'] ?? 'new',
-			'category' => $filters['category'] ?? 'all',
-			'sort'     => $filters['sort'] ?? 'newest',
-		], $extra );
-		if ( !empty( $filters['pageId'] ) ) {
-			$q['pageid'] = (int)$filters['pageId'];
+		$merged = array_merge( $filters, $extra );
+		$q = [
+			'status'   => $merged['status'] ?? 'new',
+			'category' => $merged['category'] ?? 'all',
+			'sort'     => $merged['sort'] ?? 'newest',
+		];
+		if ( !empty( $merged['pageId'] ) ) {
+			$q['pageid'] = (int)$merged['pageId'];
+		}
+		if ( !empty( $merged['pagename'] ) ) {
+			$q['pagename'] = $merged['pagename'];
+		}
+		if ( isset( $merged['offset'] ) ) {
+			$q['offset'] = (int)$merged['offset'];
+		}
+		// Allow explicit clear of page filter via null in $extra
+		if ( array_key_exists( 'pageId', $extra ) && $extra['pageId'] === null ) {
+			unset( $q['pageid'], $q['pagename'] );
 		}
 		return $q;
+	}
+
+	/**
+	 * Jump-to-article form: type a title, open that page's feedback view.
+	 * Restores the pre-dashboard title lookup for "does article X have feedback?"
+	 */
+	private function renderPageLookupForm(): string {
+		$html = Html::openElement( 'form', [
+			'method' => 'get',
+			'action' => $this->getPageTitle()->getLocalURL(),
+			'class'  => 'spf-page-lookup-form',
+		] );
+		$html .= Html::openElement( 'div', [ 'class' => 'spf-filter-row' ] );
+		$html .= Html::label(
+			$this->msg( 'saintapediafeedback-special-pagename' )->text(),
+			'spf-lookup-pagename',
+			[ 'class' => 'spf-filter-label' ]
+		);
+		$html .= Html::input( 'pagename', '', 'text', [
+			'id'          => 'spf-lookup-pagename',
+			'class'       => 'spf-lookup-input',
+			'placeholder' => $this->msg( 'saintapediafeedback-special-pagename' )->text(),
+			'size'        => 40,
+		] );
+		// Distinct submit name so this does not collide with filter Apply
+		$html .= Html::submitButton(
+			$this->msg( 'saintapediafeedback-special-submit' )->text(),
+			[ 'name' => 'spf_goto', 'value' => '1', 'class' => 'spf-filter-submit' ]
+		);
+		$html .= Html::closeElement( 'div' );
+		$html .= Html::rawElement( 'p', [ 'class' => 'spf-lookup-help' ],
+			$this->msg( 'saintapediafeedback-lookup-help' )->escaped()
+		);
+		$html .= Html::closeElement( 'form' );
+		return $html;
 	}
 
 	private function renderSummaryChips( array $counts, array $filters ): string {
@@ -272,6 +392,20 @@ class SpecialFeedback extends SpecialPage {
 			'action' => $this->getPageTitle()->getLocalURL(),
 			'class'  => 'spf-filter-form',
 		] );
+
+		// Article filter (dashboard): filter list by page without leaving the dashboard
+		$html .= Html::openElement( 'div', [ 'class' => 'spf-filter-row' ] );
+		$html .= Html::label(
+			$this->msg( 'saintapediafeedback-filter-page' )->text(),
+			'spf-filter-pagename',
+			[ 'class' => 'spf-filter-label' ]
+		);
+		$html .= Html::input( 'pagename', (string)( $filters['pagename'] ?? '' ), 'text', [
+			'id'    => 'spf-filter-pagename',
+			'class' => 'spf-lookup-input',
+			'size'  => 40,
+		] );
+		$html .= Html::closeElement( 'div' );
 
 		$html .= Html::openElement( 'div', [ 'class' => 'spf-filter-row' ] );
 

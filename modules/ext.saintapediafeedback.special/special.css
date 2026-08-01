@@ -52,6 +52,34 @@
 .spf-chip-filter-actioned .spf-chip-count { background: #d5fdf4; }
 .spf-chip-filter-dismissed .spf-chip-count { background: #eaecf0; }
 
+.spf-page-lookup-form {
+	margin: 0 0 1rem;
+	padding: 12px 14px;
+	background: #fff;
+	border: 1px solid #c8ccd1;
+	border-radius: 8px;
+}
+
+.spf-lookup-help {
+	margin: 8px 0 0;
+	font-size: 0.8rem;
+	color: #54595d;
+}
+
+.spf-lookup-input {
+	padding: 6px 8px;
+	border: 1px solid #c8ccd1;
+	border-radius: 4px;
+	font-size: 0.875rem;
+	min-width: 16rem;
+	max-width: 100%;
+}
+
+.spf-dashboard-page-filter {
+	font-size: 0.875rem;
+	margin: 0 0 0.75rem;
+}
+
 .spf-filter-form {
 	margin: 0 0 1.25rem;
 	padding: 12px 14px;
