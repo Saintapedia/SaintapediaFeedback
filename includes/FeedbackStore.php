@@ -69,6 +69,103 @@ class FeedbackStore {
 		return iterator_to_array( $rows );
 	}
 
+	/**
+	 * Dashboard listing with filters and sort.
+	 *
+	 * @param array $filters Keys: status (string|null), category (string|null),
+	 *                       pageId (int|null), sort (newest|oldest)
+	 * @return object[]
+	 */
+	public function getDashboard( array $filters, int $limit = 50, int $offset = 0 ): array {
+		$db = $this->loadBalancer->getConnection( DB_REPLICA );
+		[ $conds, $options ] = $this->buildDashboardQuery( $db, $filters, $limit, $offset );
+		$rows = $db->select( 'spf_feedback', '*', $conds, __METHOD__, $options );
+		return iterator_to_array( $rows );
+	}
+
+	/** Total rows matching dashboard filters (for pagination). */
+	public function countDashboard( array $filters ): int {
+		$db = $this->loadBalancer->getConnection( DB_REPLICA );
+		[ $conds ] = $this->buildDashboardQuery( $db, $filters, null, null );
+		return (int)$db->selectField( 'spf_feedback', 'COUNT(*)', $conds, __METHOD__ );
+	}
+
+	/**
+	 * Counts keyed by status for summary chips (respects page/category filters only).
+	 *
+	 * @return array<string,int>
+	 */
+	public function countByStatus( array $filters = [] ): array {
+		$db = $this->loadBalancer->getConnection( DB_REPLICA );
+		// Ignore status filter for summary counts
+		$filtersForSummary = $filters;
+		unset( $filtersForSummary['status'] );
+		[ $conds ] = $this->buildDashboardQuery( $db, $filtersForSummary, null, null );
+
+		$res = $db->select(
+			'spf_feedback',
+			[ 'fb_status', 'cnt' => 'COUNT(*)' ],
+			$conds,
+			__METHOD__,
+			[ 'GROUP BY' => 'fb_status' ]
+		);
+
+		$counts = [
+			'new'       => 0,
+			'reviewed'  => 0,
+			'actioned'  => 0,
+			'dismissed' => 0,
+		];
+		foreach ( $res as $row ) {
+			$status = (string)$row->fb_status;
+			$counts[$status] = (int)$row->cnt;
+		}
+		$counts['all'] = array_sum( $counts );
+		return $counts;
+	}
+
+	/**
+	 * @param \Wikimedia\Rdbms\IDatabase $db
+	 * @param array $filters
+	 * @param int|null $limit
+	 * @param int|null $offset
+	 * @return array{0:array,1:array}
+	 */
+	private function buildDashboardQuery( $db, array $filters, ?int $limit, ?int $offset ): array {
+		$conds = [];
+
+		$status = $filters['status'] ?? null;
+		if ( is_string( $status ) && $status !== '' && $status !== 'all' ) {
+			$conds['fb_status'] = $status;
+		}
+
+		$pageId = $filters['pageId'] ?? null;
+		if ( $pageId ) {
+			$conds['fb_page_id'] = (int)$pageId;
+		}
+
+		$category = $filters['category'] ?? null;
+		if ( is_string( $category ) && $category !== '' && $category !== 'all' ) {
+			// Categories stored as JSON array strings; LIKE is good enough for allowlisted chips
+			$conds[] = 'fb_categories ' . $db->buildLike(
+				$db->anyString(),
+				'"' . $category . '"',
+				$db->anyString()
+			);
+		}
+
+		$sort = ( $filters['sort'] ?? 'newest' ) === 'oldest' ? 'ASC' : 'DESC';
+		$options = [ 'ORDER BY' => "fb_timestamp $sort, fb_id $sort" ];
+		if ( $limit !== null ) {
+			$options['LIMIT'] = $limit;
+		}
+		if ( $offset !== null ) {
+			$options['OFFSET'] = $offset;
+		}
+
+		return [ $conds, $options ];
+	}
+
 	/** Fetch unprocessed feedback rows for LLM batch processing. */
 	public function getPendingLlmBatch( int $limit = 100 ): array {
 		$db = $this->loadBalancer->getConnection( DB_REPLICA );
@@ -137,6 +234,23 @@ class FeedbackStore {
 				'categories' => json_decode( $row->fb_categories, true ) ?? [],
 				'comment'    => $row->fb_comment,
 				'status'     => $row->fb_status,
+			];
+		}, $rows );
+	}
+
+	/** Export filtered dashboard rows as structured data for LLM consumption. */
+	public function exportDashboard( array $filters, int $limit = 500 ): array {
+		$rows = $this->getDashboard( $filters, $limit, 0 );
+		return array_map( static function ( $row ) {
+			return [
+				'id'         => (int)$row->fb_id,
+				'pageId'     => (int)$row->fb_page_id,
+				'pageTitle'  => $row->fb_page_title,
+				'timestamp'  => $row->fb_timestamp,
+				'categories' => json_decode( $row->fb_categories, true ) ?? [],
+				'comment'    => $row->fb_comment,
+				'status'     => $row->fb_status,
+				'mode'       => $row->fb_mode,
 			];
 		}, $rows );
 	}

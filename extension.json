@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.1.0",
+	"version": "1.2.0",
 	"author": [ "Saintapedia contributors" ],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
@@ -73,6 +73,11 @@
 				"saintapediafeedback-error-namespace"
 			],
 			"dependencies": [ "mediawiki.api", "mediawiki.user", "mediawiki.util" ]
+		},
+		"ext.saintapediafeedback.special": {
+			"localBasePath": "modules/ext.saintapediafeedback.special",
+			"remoteExtPath": "SaintapediaFeedback/modules/ext.saintapediafeedback.special",
+			"styles": [ "special.css" ]
 		}
 	},
 	"ServiceWiringFiles": [ "includes/ServiceWiring.php" ],
