@@ -296,7 +296,11 @@ class SpecialFeedback extends SpecialPage {
 			return;
 		}
 
-		$messages = [ $this->msg( 'saintapediafeedback-status-updated' )->escaped() ];
+		$this->getOutput()->addHTML(
+			'<div class="successbox">' .
+			$this->msg( 'saintapediafeedback-status-updated' )->escaped() .
+			'</div>'
+		);
 
 		// Optional Talk note: short link only (never dumps work notes / raw feedback)
 		if (
@@ -308,34 +312,40 @@ class SpecialFeedback extends SpecialPage {
 				? Title::newFromID( $pageId )
 				: null;
 			if ( !$article ) {
-				// Resolve page from the feedback row via store export-ish path
 				$article = $this->resolveArticleForFeedback( $fbId );
 			}
+			$talkOk = false;
 			if ( $article ) {
-				$posted = TalkLinkPoster::postResolutionLink(
+				$talkOk = TalkLinkPoster::postResolutionLink(
 					$article,
 					$fbId,
 					$this->getUser(),
 					$makePublic
 				);
-				if ( $posted ) {
-					$messages[] = $this->msg( 'saintapediafeedback-talk-posted' )->escaped();
-				} else {
-					$messages[] = $this->msg( 'saintapediafeedback-talk-failed' )->escaped();
-				}
+			}
+			if ( $talkOk ) {
+				$this->getOutput()->addHTML(
+					'<div class="successbox">' .
+					$this->msg( 'saintapediafeedback-talk-posted' )->escaped() .
+					'</div>'
+				);
+			} else {
+				// Status update succeeded; Talk edit is best-effort — use warning, not success
+				$this->getOutput()->addHTML(
+					'<div class="warningbox">' .
+					$this->msg( 'saintapediafeedback-talk-failed' )->escaped() .
+					'</div>'
+				);
 			}
 		}
-
-		$this->getOutput()->addHTML(
-			'<div class="successbox">' . implode( ' ', $messages ) . '</div>'
-		);
 	}
 
 	/**
+	 * Look up the article Title for a feedback row by id (from fb_page_id).
+	 *
 	 * @return Title|null
 	 */
 	private function resolveArticleForFeedback( int $fbId ) {
-		// Lightweight lookup via page-scoped store would need a getById; use DB through store counts path
 		try {
 			$services = MediaWikiServices::getInstance();
 			$dbr = $services->getDBLoadBalancer()->getConnection( DB_REPLICA );
