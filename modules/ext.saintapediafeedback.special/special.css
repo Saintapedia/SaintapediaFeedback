@@ -1,0 +1,245 @@
+/* ── Special:SaintapediaFeedback dashboard ─────────────────────────────── */
+
+.spf-summary-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: 0 0 1rem;
+}
+
+.spf-chip-filter {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	border: 1px solid #c8ccd1;
+	border-radius: 999px;
+	background: #fff;
+	color: #202122;
+	text-decoration: none;
+	font-size: 0.875rem;
+}
+
+.spf-chip-filter:hover {
+	background: #f8f9fa;
+	text-decoration: none;
+}
+
+.spf-chip-filter--active {
+	border-color: #3875d7;
+	background: #eaf2ff;
+	color: #1a4b99;
+	font-weight: 600;
+}
+
+.spf-chip-count {
+	display: inline-block;
+	min-width: 1.4em;
+	padding: 0 6px;
+	border-radius: 999px;
+	background: #eaecf0;
+	font-size: 0.8rem;
+	text-align: center;
+}
+
+.spf-chip-filter--active .spf-chip-count {
+	background: #3875d7;
+	color: #fff;
+}
+
+.spf-chip-filter-new .spf-chip-count { background: #fef6e7; }
+.spf-chip-filter-reviewed .spf-chip-count { background: #eaf3ff; }
+.spf-chip-filter-actioned .spf-chip-count { background: #d5fdf4; }
+.spf-chip-filter-dismissed .spf-chip-count { background: #eaecf0; }
+
+.spf-filter-form {
+	margin: 0 0 1.25rem;
+	padding: 12px 14px;
+	background: #f8f9fa;
+	border: 1px solid #eaecf0;
+	border-radius: 8px;
+}
+
+.spf-filter-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 14px;
+}
+
+.spf-filter-label {
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: #54595d;
+}
+
+.spf-filter-form select {
+	padding: 6px 8px;
+	border: 1px solid #c8ccd1;
+	border-radius: 4px;
+	background: #fff;
+	font-size: 0.875rem;
+}
+
+.spf-filter-submit {
+	padding: 6px 14px;
+	border: none;
+	border-radius: 4px;
+	background: #3875d7;
+	color: #fff;
+	font-size: 0.875rem;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.spf-filter-submit:hover {
+	background: #2a5ab5;
+}
+
+.spf-dashboard-meta {
+	font-size: 0.875rem;
+	color: #54595d;
+	margin: 0 0 0.75rem;
+}
+
+.spf-feedback-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.spf-feedback-item {
+	padding: 14px 16px;
+	border: 1px solid #c8ccd1;
+	border-radius: 8px;
+	background: #fff;
+	border-left-width: 4px;
+}
+
+.spf-status-new {
+	border-left-color: #fc3;
+}
+
+.spf-status-reviewed {
+	border-left-color: #36c;
+}
+
+.spf-status-actioned {
+	border-left-color: #00af89;
+}
+
+.spf-status-dismissed {
+	border-left-color: #a2a9b1;
+	opacity: 0.85;
+}
+
+.spf-feedback-meta {
+	font-size: 0.8rem;
+	color: #54595d;
+	margin-bottom: 6px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.spf-id {
+	font-weight: 600;
+	color: #202122;
+}
+
+.spf-status-badge {
+	display: inline-block;
+	padding: 1px 8px;
+	border-radius: 999px;
+	background: #eaecf0;
+	font-weight: 600;
+	text-transform: capitalize;
+}
+
+.spf-mode {
+	display: inline-block;
+	padding: 1px 6px;
+	border-radius: 3px;
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+.spf-mode-public {
+	background: #eaf2ff;
+	color: #1a4b99;
+}
+
+.spf-mode-enterprise {
+	background: #f3e8ff;
+	color: #6b21a8;
+}
+
+.spf-feedback-page {
+	font-size: 0.9rem;
+	margin-bottom: 6px;
+}
+
+.spf-feedback-categories {
+	font-size: 0.875rem;
+	margin-bottom: 6px;
+}
+
+.spf-feedback-comment {
+	font-size: 0.875rem;
+	color: #202122;
+	background: #f8f9fa;
+	padding: 8px 10px;
+	border-radius: 4px;
+	margin-top: 6px;
+	white-space: pre-wrap;
+}
+
+.spf-feedback-actions {
+	margin-top: 10px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.spf-status-form {
+	display: inline;
+	margin: 0;
+}
+
+.spf-action-btn {
+	padding: 4px 12px;
+	border: 1px solid #c8ccd1;
+	border-radius: 4px;
+	font-size: 0.8rem;
+	color: #202122;
+	background: #fff;
+	cursor: pointer;
+}
+
+.spf-action-btn:hover {
+	background: #f8f9fa;
+}
+
+.spf-action-actioned {
+	border-color: #00af89;
+	color: #00664d;
+}
+
+.spf-action-dismissed {
+	border-color: #a2a9b1;
+	color: #54595d;
+}
+
+.spf-pagination {
+	display: flex;
+	gap: 16px;
+	margin: 1.25rem 0;
+	font-size: 0.9rem;
+}
+
+.spf-export-link {
+	margin-top: 1.5em;
+	font-size: 0.875rem;
+}
