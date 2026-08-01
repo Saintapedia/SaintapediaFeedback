@@ -5,3 +5,5 @@ ALTER TABLE /*_*/spf_feedback
 	ADD COLUMN fb_priority TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER fb_llm_processed_timestamp;
 
 CREATE INDEX spf_priority ON /*_*/spf_feedback (fb_priority, fb_status, fb_timestamp);
+
+-- Note: work notes / public resolution fields: see patch-work-notes-public.sql

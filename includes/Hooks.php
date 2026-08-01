@@ -138,6 +138,11 @@ class Hooks {
 			'fb_status_user_id',
 			$dir . '/patch-audit-priority.sql'
 		);
+		$updater->addExtensionField(
+			'spf_feedback',
+			'fb_work_note',
+			$dir . '/patch-work-notes-public.sql'
+		);
 	}
 
 	/**

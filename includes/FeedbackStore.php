@@ -248,11 +248,21 @@ class FeedbackStore {
 	 * @param int|null $actorUserId User who performed the change (null = system)
 	 * @return bool True if a matching row was updated
 	 */
+	/**
+	 * Update workflow status for a feedback row and append an audit log entry.
+	 *
+	 * @param array $opts Optional keys:
+	 *   - workNote (string|null) private editor note
+	 *   - resolutionPublic (bool) expose on public resolutions list (actioned only)
+	 *   - resolutionSummary (string|null) short public summary
+	 * @return bool True if a matching row was updated
+	 */
 	public function updateStatus(
 		int $id,
 		string $status,
 		?int $pageId = null,
-		?int $actorUserId = null
+		?int $actorUserId = null,
+		array $opts = []
 	): bool {
 		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
 		$conds = [ 'fb_id' => $id ];
@@ -260,50 +270,128 @@ class FeedbackStore {
 			$conds['fb_page_id'] = $pageId;
 		}
 
-		$old = $db->selectField( 'spf_feedback', 'fb_status', $conds, __METHOD__ );
-		if ( $old === false ) {
+		$row = $db->selectRow( 'spf_feedback', '*', $conds, __METHOD__ );
+		if ( !$row ) {
 			return false;
 		}
-		if ( (string)$old === $status ) {
-			return true;
+		$old = (string)$row->fb_status;
+
+		$workNote = isset( $opts['workNote'] ) ? $this->clampNote( $opts['workNote'] ) : null;
+		$resPublic = !empty( $opts['resolutionPublic'] ) && $status === 'actioned';
+		$resSummary = isset( $opts['resolutionSummary'] )
+			? $this->clampNote( $opts['resolutionSummary'], 1000 )
+			: null;
+
+		$set = [
+			'fb_status'           => $status,
+			'fb_status_user_id'   => $actorUserId,
+			'fb_status_timestamp' => $db->timestamp(),
+		];
+		// Always allow updating notes when provided (including re-action)
+		if ( array_key_exists( 'workNote', $opts ) ) {
+			$set['fb_work_note'] = $workNote;
+		}
+		if ( $status === 'actioned' ) {
+			if ( array_key_exists( 'resolutionPublic', $opts ) ) {
+				$set['fb_resolution_public'] = $resPublic ? 1 : 0;
+			}
+			if ( array_key_exists( 'resolutionSummary', $opts ) ) {
+				$set['fb_resolution_summary'] = $resSummary;
+			}
+		} elseif ( $status === 'dismissed' ) {
+			// Dismissed items should not stay on the public resolution list
+			$set['fb_resolution_public'] = 0;
 		}
 
-		$ts = $db->timestamp();
-		$db->update(
-			'spf_feedback',
-			[
-				'fb_status'           => $status,
-				'fb_status_user_id'   => $actorUserId,
-				'fb_status_timestamp' => $ts,
-			],
-			$conds,
-			__METHOD__
-		);
-		if ( !$db->affectedRows() ) {
-			return false;
+		$ts = $set['fb_status_timestamp'];
+		$db->update( 'spf_feedback', $set, $conds, __METHOD__ );
+		if ( !$db->affectedRows() && $old === $status ) {
+			// Status unchanged but notes may have updated
+			return true;
 		}
-		$this->insertStatusLog( $db, $id, $actorUserId, (string)$old, $status, $ts );
+		if ( $old !== $status || $workNote !== null ) {
+			$this->insertStatusLog(
+				$db, $id, $actorUserId, $old, $status, $ts, $workNote
+			);
+		}
 		return true;
 	}
 
 	/**
 	 * Bulk-update workflow status for many feedback ids (with audit).
+	 * Bulk path does not set public resolution (use single-item action for that).
 	 *
 	 * @param int[] $ids
 	 * @return int Number of rows updated
 	 */
-	public function updateStatusBulk( array $ids, string $status, ?int $actorUserId = null ): int {
+	public function updateStatusBulk(
+		array $ids,
+		string $status,
+		?int $actorUserId = null,
+		?string $workNote = null
+	): int {
 		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
 		if ( !$ids || !in_array( $status, FeedbackFilters::processActions(), true ) ) {
 			return 0;
 		}
+		$opts = [];
+		if ( $workNote !== null && $workNote !== '' ) {
+			$opts['workNote'] = $workNote;
+		}
 		$n = 0;
 		foreach ( $ids as $id ) {
-			if ( $this->updateStatus( $id, $status, null, $actorUserId ) ) {
+			if ( $this->updateStatus( $id, $status, null, $actorUserId, $opts ) ) {
 				$n++;
 			}
 		}
 		return $n;
+	}
+
+	/**
+	 * Public resolutions for a page (actioned + flagged public). No auth required.
+	 *
+	 * @return object[]
+	 */
+	public function getPublicResolutions( int $pageId, int $limit = 50 ): array {
+		$db = $this->loadBalancer->getConnection( DB_REPLICA );
+		if ( !$db->fieldExists( 'spf_feedback', 'fb_resolution_public', __METHOD__ ) ) {
+			return [];
+		}
+		$rows = $db->select(
+			'spf_feedback',
+			[
+				'fb_id',
+				'fb_categories',
+				'fb_resolution_summary',
+				'fb_status_timestamp',
+				'fb_timestamp',
+			],
+			[
+				'fb_page_id' => $pageId,
+				'fb_status' => 'actioned',
+				'fb_resolution_public' => 1,
+			],
+			__METHOD__,
+			[
+				'ORDER BY' => 'fb_status_timestamp DESC',
+				'LIMIT' => $limit,
+			]
+		);
+		return iterator_to_array( $rows );
+	}
+
+	private function clampNote( $note, int $max = 2000 ): ?string {
+		if ( $note === null ) {
+			return null;
+		}
+		$note = trim( (string)$note );
+		if ( $note === '' ) {
+			return null;
+		}
+		if ( mb_strlen( $note ) > $max ) {
+			$note = mb_substr( $note, 0, $max );
+		}
+		return $note;
 	}
 
 	/**
@@ -315,24 +403,24 @@ class FeedbackStore {
 		?int $actorUserId,
 		?string $oldStatus,
 		string $newStatus,
-		string $ts
+		string $ts,
+		?string $note = null
 	): void {
-		// Table may be missing on partial upgrades — fail soft
 		try {
 			if ( !$db->tableExists( 'spf_feedback_log', __METHOD__ ) ) {
 				return;
 			}
-			$db->insert(
-				'spf_feedback_log',
-				[
-					'log_fb_id'       => $fbId,
-					'log_user_id'     => $actorUserId,
-					'log_old_status'  => $oldStatus,
-					'log_new_status'  => $newStatus,
-					'log_timestamp'   => $ts,
-				],
-				__METHOD__
-			);
+			$row = [
+				'log_fb_id'       => $fbId,
+				'log_user_id'     => $actorUserId,
+				'log_old_status'  => $oldStatus,
+				'log_new_status'  => $newStatus,
+				'log_timestamp'   => $ts,
+			];
+			if ( $db->fieldExists( 'spf_feedback_log', 'log_note', __METHOD__ ) ) {
+				$row['log_note'] = $note;
+			}
+			$db->insert( 'spf_feedback_log', $row, __METHOD__ );
 		} catch ( \Throwable $e ) {
 			wfDebugLog( 'SaintapediaFeedback', 'audit log insert failed: ' . $e->getMessage() );
 		}
