@@ -10,7 +10,7 @@ Product direction for SaintapediaFeedback: help **enterprise editors** improve p
 | Audit trail | Yes — last actor + timestamp; `spf_feedback_log` |
 | Toolbox count | Yes — “Page feedback (N new)” for managers |
 | **Public count chip** | **Default off** — use public *resolutions* instead of a noisy badge |
-| Watchlist Echo | Default **on** — watchers get Echo on new feedback |
+| Watchlist Echo | Default **on** — only watchers who **may manage** feedback (same gate as dashboard; no comment leak to casual watchers) |
 | **Talk pages** | **Do not auto-post.** Keep work notes on the dashboard |
 | **Actioned → public** | Optional: publish a short **resolution** (not the raw reader comment) on a public list |
 | LLM | Export/batch ready; proactive AI edits via future job |
