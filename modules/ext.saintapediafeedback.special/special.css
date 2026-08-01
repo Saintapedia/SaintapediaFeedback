@@ -301,3 +301,75 @@
 	background: #fff;
 	font-size: 0.875rem;
 }
+
+.spf-audit {
+	font-size: 0.8rem;
+	color: #54595d;
+	margin: 4px 0 6px;
+}
+
+.spf-priority-badge {
+	display: inline-block;
+	padding: 1px 8px;
+	border-radius: 999px;
+	background: #fef6e7;
+	color: #ac6600;
+	font-size: 0.75rem;
+	font-weight: 600;
+}
+
+.spf-work-note,
+.spf-res-summary {
+	display: block;
+	width: 100%;
+	max-width: 28rem;
+	margin: 6px 0;
+	padding: 6px 8px;
+	border: 1px solid #c8ccd1;
+	border-radius: 4px;
+	font-size: 0.85rem;
+}
+
+.spf-work-note-display {
+	font-size: 0.85rem;
+	background: #fff8e6;
+	border-left: 3px solid #fc3;
+	padding: 6px 10px;
+	margin: 6px 0;
+}
+
+.spf-action-hint {
+	font-size: 0.8rem;
+	color: #54595d;
+	margin: 0 0 6px;
+	max-width: 28rem;
+}
+
+.spf-public-check {
+	display: block;
+	font-size: 0.85rem;
+	margin: 6px 0;
+	cursor: pointer;
+}
+
+.spf-public-flag {
+	font-size: 0.8rem;
+	color: #14866d;
+	font-weight: 600;
+	margin: 4px 0;
+}
+
+.spf-public-link {
+	font-size: 0.8rem;
+	margin: 8px 0 0;
+}
+
+.spf-status-form-actioned {
+	display: block;
+	border: 1px solid #c8ccd1;
+	border-radius: 8px;
+	padding: 10px;
+	margin-top: 8px;
+	background: #f8f9fa;
+	max-width: 32rem;
+}

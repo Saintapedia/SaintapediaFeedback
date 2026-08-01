@@ -4,10 +4,13 @@ namespace MediaWiki\Extension\SaintapediaFeedback\Special;
 
 use ErrorPageError;
 use Html;
+use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackFilters;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
+use PermissionsError;
 use SpecialPage;
 use Title;
+use User;
 
 /**
  * Editor dashboard + per-page feedback review.
@@ -24,13 +27,34 @@ class SpecialFeedback extends SpecialPage {
 	private FeedbackStore $store;
 
 	public function __construct( FeedbackStore $store ) {
+		// Restriction right kept for Special:ListGroupRights / LocalSettings;
+		// actual access is FeedbackAccess (wiki page + defaults + explicit right).
 		parent::__construct( 'SaintapediaFeedback', 'saintapediafeedback-view' );
 		$this->store = $store;
 	}
 
+	/**
+	 * Allow access via MediaWiki:SaintapediaFeedback-access groups (default: all logged-in),
+	 * or the saintapediafeedback-view right.
+	 *
+	 * @param User $user
+	 * @return bool
+	 */
+	public function userCanExecute( $user ) {
+		return FeedbackAccess::userCanManage( $user );
+	}
+
+	/**
+	 * @throws PermissionsError
+	 */
+	public function checkPermissions() {
+		if ( !$this->userCanExecute( $this->getUser() ) ) {
+			throw new PermissionsError( 'saintapediafeedback-view' );
+		}
+	}
+
 	public function execute( $par ): void {
 		$this->setHeaders();
-		$this->checkPermissions();
 		$out = $this->getOutput();
 		// mediawiki.special is styles-only; our module is loaded once via addModules (scripts+styles)
 		$out->addModuleStyles( [ 'mediawiki.special' ] );
@@ -38,6 +62,14 @@ class SpecialFeedback extends SpecialPage {
 
 		$par = (string)( $par ?? '' );
 		$request = $this->getRequest();
+
+		// Public resolutions list — no login (only actioned items marked public)
+		if ( $par === 'resolutions' || strpos( $par, 'resolutions/' ) === 0 ) {
+			$this->showPublicResolutions( $par );
+			return;
+		}
+
+		$this->checkPermissions();
 
 		// JSON export routes (editors only — same right as this page)
 		if ( $par === 'export' || strpos( $par, 'export/' ) === 0 ) {
@@ -83,6 +115,19 @@ class SpecialFeedback extends SpecialPage {
 	private function showDashboard(): void {
 		$out = $this->getOutput();
 		$out->setPageTitle( $this->msg( 'saintapediafeedback-dashboard-title' ) );
+
+		// Help editors find the access config page
+		$accessTitle = FeedbackAccess::getAccessPageTitle();
+		if ( $accessTitle ) {
+			$out->addSubtitle(
+				$this->msg( 'saintapediafeedback-access-help' )
+					->rawParams(
+						Html::element( 'a', [ 'href' => $accessTitle->getLocalURL() ],
+							$accessTitle->getPrefixedText() )
+					)
+					->parse()
+			);
+		}
 
 		$filters = $this->getFiltersFromRequest();
 		$offset = max( 0, $this->getRequest()->getInt( 'offset' ) );
@@ -230,10 +275,18 @@ class SpecialFeedback extends SpecialPage {
 		}
 
 		// Prefer scoped update when page id is known
+		$actorId = $this->getUser()->isRegistered() ? $this->getUser()->getId() : null;
+		$opts = [
+			'workNote' => $request->getText( 'spfworknote' ),
+			'resolutionPublic' => $request->getCheck( 'spfpublic' ),
+			'resolutionSummary' => $request->getText( 'spfressummary' ),
+		];
 		$updated = $this->store->updateStatus(
 			$fbId,
 			$action,
-			$pageId > 0 ? $pageId : null
+			$pageId > 0 ? $pageId : null,
+			$actorId,
+			$opts
 		);
 
 		if ( $updated ) {
@@ -265,12 +318,85 @@ class SpecialFeedback extends SpecialPage {
 		if ( !is_array( $ids ) ) {
 			$ids = [];
 		}
-		$n = $this->store->updateStatusBulk( $ids, $action );
+		$actorId = $this->getUser()->isRegistered() ? $this->getUser()->getId() : null;
+		$workNote = $request->getText( 'spfworknote' );
+		$n = $this->store->updateStatusBulk(
+			$ids,
+			$action,
+			$actorId,
+			$workNote !== '' ? $workNote : null
+		);
 		$this->getOutput()->addHTML(
 			'<div class="successbox">' .
 			$this->msg( 'saintapediafeedback-bulk-updated' )->numParams( $n )->escaped() .
 			'</div>'
 		);
+	}
+
+	/**
+	 * Anyone can view public resolutions (actioned + published). No raw reader comments.
+	 */
+	private function showPublicResolutions( string $par ): void {
+		$out = $this->getOutput();
+		$pageId = 0;
+		if ( preg_match( '#^resolutions/(\d+)$#', $par, $m ) ) {
+			$pageId = (int)$m[1];
+		} else {
+			$pageId = $this->getRequest()->getInt( 'pageid' );
+		}
+
+		if ( !$pageId ) {
+			$out->setPageTitle( $this->msg( 'saintapediafeedback-resolutions-title' ) );
+			$out->addWikiMsg( 'saintapediafeedback-resolutions-need-page' );
+			return;
+		}
+
+		$title = Title::newFromID( $pageId );
+		if ( !$title ) {
+			$out->setPageTitle( $this->msg( 'saintapediafeedback-resolutions-title' ) );
+			$out->addWikiMsg( 'saintapediafeedback-special-notfound' );
+			return;
+		}
+
+		$out->setPageTitle(
+			$this->msg( 'saintapediafeedback-resolutions-page-title', $title->getPrefixedText() )
+		);
+		$out->addSubtitle( Html::element( 'a', [ 'href' => $title->getLocalURL() ],
+			$title->getPrefixedText() ) );
+
+		$rows = $this->store->getPublicResolutions( $pageId );
+		if ( !$rows ) {
+			$out->addWikiMsg( 'saintapediafeedback-resolutions-empty' );
+			return;
+		}
+
+		$out->addHTML( Html::openElement( 'div', [ 'class' => 'spf-feedback-list spf-public-resolutions' ] ) );
+		foreach ( $rows as $row ) {
+			$categories = json_decode( $row->fb_categories, true ) ?? [];
+			$catLabels = implode( ', ', array_map( function ( $cat ) {
+				return $this->msg( 'saintapediafeedback-category-' . $cat )->text();
+			}, $categories ) );
+			$when = $row->fb_status_timestamp
+				? $this->getLanguage()->userDate( $row->fb_status_timestamp, $this->getUser() )
+				: '';
+			$summary = $row->fb_resolution_summary
+				?: $this->msg( 'saintapediafeedback-resolutions-default-summary' )->text();
+
+			$out->addHTML( '<div class="spf-feedback-item spf-status-actioned">' );
+			$out->addHTML( '<div class="spf-feedback-meta">'
+				. '<span class="spf-id">#' . (int)$row->fb_id . '</span> '
+				. ( $when !== '' ? '<span class="spf-time">' . htmlspecialchars( $when ) . '</span>' : '' )
+				. '</div>' );
+			if ( $catLabels !== '' ) {
+				$out->addHTML( '<div class="spf-feedback-categories">'
+					. $this->msg( 'saintapediafeedback-special-categories' )->escaped()
+					. ' <strong>' . htmlspecialchars( $catLabels ) . '</strong></div>' );
+			}
+			$out->addHTML( '<div class="spf-feedback-comment">'
+				. nl2br( htmlspecialchars( $summary ) ) . '</div>' );
+			$out->addHTML( '</div>' );
+		}
+		$out->addHTML( Html::closeElement( 'div' ) );
 	}
 
 	private function handleExport( string $par ): void {
@@ -389,6 +515,16 @@ class SpecialFeedback extends SpecialPage {
 				$this->msg( 'saintapediafeedback-action-' . $status )->text() );
 		}
 		$html .= Html::closeElement( 'select' );
+		$html .= Html::element( 'label', [
+			'for' => 'spf-bulk-worknote',
+			'class' => 'spf-filter-label',
+		], $this->msg( 'saintapediafeedback-work-note' )->text() );
+		$html .= Html::textarea( 'spfworknote', '', [
+			'id' => 'spf-bulk-worknote',
+			'class' => 'spf-work-note',
+			'rows' => 2,
+			'placeholder' => $this->msg( 'saintapediafeedback-work-note-placeholder' )->text(),
+		] );
 		$html .= Html::submitButton(
 			$this->msg( 'saintapediafeedback-bulk-apply' )->text(),
 			[ 'class' => 'spf-filter-submit' ]
@@ -619,7 +755,37 @@ class SpecialFeedback extends SpecialPage {
 		$out->addHTML( '<span class="spf-status spf-status-badge">'
 			. htmlspecialchars( $this->msg( 'saintapediafeedback-status-' . $row->fb_status )->text() )
 			. '</span>' );
+		if ( !empty( $row->fb_priority ) ) {
+			$out->addHTML( ' <span class="spf-priority-badge">'
+				. $this->msg( 'saintapediafeedback-priority-sme' )->escaped()
+				. '</span>' );
+		}
 		$out->addHTML( '</div>' );
+
+		// Audit: last status change
+		if ( !empty( $row->fb_status_timestamp ) ) {
+			$actor = '';
+			if ( !empty( $row->fb_status_user_id ) ) {
+				$u = \MediaWiki\MediaWikiServices::getInstance()
+					->getUserFactory()
+					->newFromId( (int)$row->fb_status_user_id );
+				if ( $u && $u->isRegistered() ) {
+					$actor = $u->getName();
+				}
+			}
+			$statusTime = $this->getLanguage()->userTimeAndDate(
+				$row->fb_status_timestamp,
+				$this->getUser()
+			);
+			if ( $actor !== '' ) {
+				$auditHtml = $this->msg( 'saintapediafeedback-audit-by' )
+					->params( $actor, $statusTime )->parse();
+			} else {
+				$auditHtml = $this->msg( 'saintapediafeedback-audit-unknown' )
+					->params( $statusTime )->parse();
+			}
+			$out->addHTML( '<div class="spf-audit">' . $auditHtml . '</div>' );
+		}
 
 		if ( $showPage ) {
 			$pageTitle = Title::newFromID( (int)$row->fb_page_id );
@@ -646,35 +812,75 @@ class SpecialFeedback extends SpecialPage {
 				. nl2br( htmlspecialchars( $row->fb_comment ) ) . '</div>' );
 		}
 
-		// Status action buttons: POST forms with CSRF token (not GET links)
-		// Stay on dashboard when processing from list view
+		// Private work note (managers only — not on Talk)
+		if ( !empty( $row->fb_work_note ) ) {
+			$out->addHTML( '<div class="spf-work-note-display">'
+				. '<strong>' . $this->msg( 'saintapediafeedback-work-note' )->escaped() . ':</strong> '
+				. nl2br( htmlspecialchars( $row->fb_work_note ) )
+				. '</div>' );
+		}
+		if ( !empty( $row->fb_resolution_public ) && $row->fb_status === 'actioned' ) {
+			$out->addHTML( '<div class="spf-public-flag">'
+				. $this->msg( 'saintapediafeedback-resolution-is-public' )->escaped()
+				. '</div>' );
+		}
+
+		// Status action forms: POST + CSRF; work note encouraged (especially for actioned)
 		$actionUrl = $showPage
 			? $this->getPageTitle()->getLocalURL( $this->filtersToQuery( $this->getFiltersFromRequest() ) )
 			: $this->getPageTitle( (string)$row->fb_page_id )->getLocalURL();
 
 		$out->addHTML( '<div class="spf-feedback-actions">' );
 		foreach ( [ 'reviewed', 'actioned', 'dismissed' ] as $status ) {
-			if ( $row->fb_status !== $status ) {
-				$out->addHTML(
-					Html::openElement( 'form', [
-						'method' => 'post',
-						'action' => $actionUrl,
-						'class'  => 'spf-status-form',
-					] ) .
-					Html::hidden( 'spfaction', $status ) .
-					Html::hidden( 'spfid', (string)(int)$row->fb_id ) .
-					Html::hidden( 'spfpageid', (string)(int)$row->fb_page_id ) .
-					Html::hidden( 'wpEditToken', $this->getUser()->getEditToken() ) .
-					Html::submitButton(
-						$this->msg( 'saintapediafeedback-action-' . $status )->text(),
-						[ 'class' => 'spf-action-btn spf-action-' . $status ]
-					) .
-					Html::closeElement( 'form' )
-				);
+			if ( $row->fb_status === $status ) {
+				continue;
 			}
-		}
-		$out->addHTML( '</div>' );
+			$formClass = 'spf-status-form spf-status-form-' . $status;
+			$html = Html::openElement( 'form', [
+				'method' => 'post',
+				'action' => $actionUrl,
+				'class'  => $formClass,
+			] );
+			$html .= Html::hidden( 'spfaction', $status );
+			$html .= Html::hidden( 'spfid', (string)(int)$row->fb_id );
+			$html .= Html::hidden( 'spfpageid', (string)(int)$row->fb_page_id );
+			$html .= Html::hidden( 'wpEditToken', $this->getUser()->getEditToken() );
 
+			if ( $status === 'actioned' ) {
+				$html .= Html::rawElement( 'p', [ 'class' => 'spf-action-hint' ],
+					$this->msg( 'saintapediafeedback-actioned-hint' )->escaped() );
+				$html .= Html::textarea( 'spfworknote', '', [
+					'class' => 'spf-work-note',
+					'rows' => 2,
+					'placeholder' => $this->msg( 'saintapediafeedback-work-note-placeholder' )->text(),
+				] );
+				$html .= Html::rawElement( 'label', [ 'class' => 'spf-public-check' ],
+					Html::input( 'spfpublic', '1', 'checkbox' ) . ' '
+					. $this->msg( 'saintapediafeedback-make-public' )->escaped()
+				);
+				$html .= Html::input( 'spfressummary', '', 'text', [
+					'class' => 'spf-res-summary',
+					'placeholder' => $this->msg( 'saintapediafeedback-resolution-summary-placeholder' )->text(),
+					'size' => 40,
+				] );
+			}
+
+			$html .= Html::submitButton(
+				$this->msg( 'saintapediafeedback-action-' . $status )->text(),
+				[ 'class' => 'spf-action-btn spf-action-' . $status ]
+			);
+			$html .= Html::closeElement( 'form' );
+			$out->addHTML( $html );
+		}
+
+		// Link to public resolutions for this page
+		$pubUrl = $this->getPageTitle( 'resolutions/' . (int)$row->fb_page_id )->getLocalURL();
+		$out->addHTML( '<p class="spf-public-link">'
+			. Html::element( 'a', [ 'href' => $pubUrl ],
+				$this->msg( 'saintapediafeedback-resolutions-link' )->text() )
+			. '</p>' );
+
+		$out->addHTML( '</div>' );
 		$out->addHTML( '</div>' );
 	}
 

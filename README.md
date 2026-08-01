@@ -95,16 +95,65 @@ $wgSaintapediaFeedbackMode = 'enterprise';
 
 **Search:** free text over comment text and page title (max 100 characters). LIKE metacharacters are escaped by MediaWiki’s DB layer.
 
-## Rights
+## Who can use the dashboard?
 
-| Right | Default | Meaning |
-|-------|---------|---------|
-| `saintapediafeedback-view` | sysop | View/process feedback, export, toolbox link |
+Access is **configurable on-wiki** (no deploy required for day-to-day changes).
+
+### Default (option C — all logged-in users)
+
+If the config page is missing or empty, **any registered account** can open the dashboard (`user` group token). Anons cannot.
+
+### Change who has access
+
+Edit **`MediaWiki:SaintapediaFeedback-access`**.
+
+That page lives in the **MediaWiki** namespace, which core restricts to users with the **`editinterface`** right (by default **sysop** and **interface-admin**). Ordinary editors cannot change who has dashboard access.
+
+One group (or token) per line:
+
+```
+# All logged-in users (default / option C)
+user
+
+# Or restrict, for example:
+# sysop
+# editor
+# autoconfirmed
+```
+
+| Token / group | Meaning |
+|---------------|---------|
+| `user` | Any registered account (option **C**) |
+| `autoconfirmed` | Autoconfirmed users |
+| `sysop` | Administrators |
+| `editor` | Your wiki’s editor group (if you have one) |
+| `*` | Everyone including anons (not recommended) |
+
+Blank lines and `#` comments are ignored. Cache invalidates on **save, delete, or move** of the access page.
+
+### Blocks
+
+**A site/user block revokes dashboard access**, even under the default “any logged-in user” model. Blocking someone is enough to stop bulk-process/export abuse; you do not need to also remove them from a group. (Matches the submit API’s block check.)
+
+### LocalSettings overrides
 
 ```php
+// PHP default when the MediaWiki page is empty/missing (default is already ['user'])
+$wgSaintapediaFeedbackAccessGroups = [ 'user' ];
+
+// Rename the config page (MediaWiki-namespace DB key, no prefix)
+// $wgSaintapediaFeedbackAccessPage = 'SaintapediaFeedback-access';
+
+// Always-on via right (still subject to blocks) — sysop has this by default
+$wgGroupPermissions['sysop']['saintapediafeedback-view'] = true;
 $wgGroupPermissions['editor']['saintapediafeedback-view'] = true;
 ```
 
+Anyone who has the **`saintapediafeedback-view`** right **or** matches a group on the access page can manage feedback — unless they are blocked.
+
+| Right | Default | Meaning |
+|-------|---------|---------|
+| `saintapediafeedback-view` | sysop | Allowed if not blocked (plus groups on the access page) |
 ## Security model (public)
 
 - Anyone can submit (no login).
@@ -130,6 +179,17 @@ php phpunit.phar -c phpunit.xml.dist
 ./vendor/bin/phpunit -c phpunit.xml.dist
 ```
 
+## Completing the loop
+
+See **[docs/FEEDBACK-LOOP.md](docs/FEEDBACK-LOOP.md)** for enterprise encouragement, Talk-page options, public counts, LLM/agent path, and future SME (Login.gov) priority feedback.
+
+```php
+// Echo watchers who can manage feedback (default true; never notifies users without dashboard access)
+$wgSaintapediaFeedbackNotifyWatchers = true;
+// Public open/resolved chip (no free text)
+$wgSaintapediaFeedbackShowPublicCounts = false;
+```
+
 ## Version
 
-**1.3.0** — dashboard, search, bulk process, editor toolbox link, optional Echo/email notify, docs and unit tests.
+**1.4.0** — audit trail, toolbox counts, watchlist Echo, optional public counts, priority column for future SME, access config page.

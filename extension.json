@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.3.0",
+	"version": "1.4.0",
 	"author": [ "Saintapedia contributors" ],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
@@ -42,7 +42,10 @@
 		"BeforePageDisplay": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onBeforePageDisplay",
 		"SidebarBeforeOutput": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onSidebarBeforeOutput",
 		"LoadExtensionSchemaUpdates": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onLoadExtensionSchemaUpdates",
-		"BeforeCreateEchoEvent": "MediaWiki\\Extension\\SaintapediaFeedback\\Notifications\\EchoHooks::onBeforeCreateEchoEvent"
+		"BeforeCreateEchoEvent": "MediaWiki\\Extension\\SaintapediaFeedback\\Notifications\\EchoHooks::onBeforeCreateEchoEvent",
+		"PageSaveComplete": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onPageSaveComplete",
+		"PageDeleteComplete": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onPageDeleteComplete",
+		"PageMoveComplete": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onPageMoveComplete"
 	},
 	"ResourceModules": {
 		"ext.saintapediafeedback.widget": {
@@ -75,7 +78,8 @@
 				"saintapediafeedback-error-nocategory",
 				"saintapediafeedback-error-captcha",
 				"saintapediafeedback-error-captcha-unavailable",
-				"saintapediafeedback-error-namespace"
+				"saintapediafeedback-error-namespace",
+				"saintapediafeedback-public-counts"
 			],
 			"dependencies": [ "mediawiki.api", "mediawiki.user", "mediawiki.util" ]
 		},
@@ -119,6 +123,22 @@
 		"SaintapediaFeedbackNotifyEmail": {
 			"value": false,
 			"description": "Optional single email address to notify on each new submission (requires $wgEnableEmail / $wgSMTP). false disables."
+		},
+		"SaintapediaFeedbackAccessPage": {
+			"value": "SaintapediaFeedback-access",
+			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to manage feedback. Missing/empty page → AccessGroups default."
+		},
+		"SaintapediaFeedbackAccessGroups": {
+			"value": [ "user" ],
+			"description": "Default groups when the access page is missing or empty. 'user' = all logged-in accounts (option C). Override via the MediaWiki access page."
+		},
+		"SaintapediaFeedbackNotifyWatchers": {
+			"value": true,
+			"description": "When true and Echo is loaded, notify watchers of the article who may manage feedback (FeedbackAccess). Never notifies users who cannot open the dashboard."
+		},
+		"SaintapediaFeedbackShowPublicCounts": {
+			"value": false,
+			"description": "When true, show a small public chip with open vs resolved feedback counts on the article (no free-text). Default off — prefer public resolutions list instead."
 		}
 	},
 	"manifest_version": 2

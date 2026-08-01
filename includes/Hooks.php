@@ -6,6 +6,7 @@ use DatabaseUpdater;
 use MediaWiki\Config\Config;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Output\OutputPage;
+use MediaWiki\Title\Title;
 use Skin;
 use SpecialPage;
 
@@ -43,6 +44,16 @@ class Hooks {
 		$enableEmail = $mode === 'enterprise' || $config->get( 'SaintapediaFeedbackEnableEmail' );
 		$captcha = CaptchaGate::prepareOutput( $out, $config );
 
+		$publicCounts = [ 'open' => 0, 'resolved' => 0, 'total' => 0 ];
+		if ( $config->get( 'SaintapediaFeedbackShowPublicCounts' ) ) {
+			try {
+				$store = MediaWikiServices::getInstance()->getService( 'SaintapediaFeedback.FeedbackStore' );
+				$publicCounts = $store->getPageCounts( $title->getArticleID() );
+			} catch ( \Throwable $e ) {
+				// ignore
+			}
+		}
+
 		$out->addJsConfigVars( [
 			'spfMode'                 => $mode,
 			'spfPageId'               => $title->getArticleID(),
@@ -51,6 +62,10 @@ class Hooks {
 			'spfRequireCaptcha'       => $captcha['requireCaptcha'],
 			'spfCaptchaMisconfigured' => $captcha['captchaMisconfigured'],
 			'spfHCaptchaSiteKey'      => $captcha['hCaptchaSiteKey'],
+			'spfShowPublicCounts'     => (bool)$config->get( 'SaintapediaFeedbackShowPublicCounts' ),
+			'spfCountOpen'            => (int)$publicCounts['open'],
+			'spfCountResolved'        => (int)$publicCounts['resolved'],
+			'spfCountTotal'           => (int)$publicCounts['total'],
 		] );
 
 		$out->addModules( 'ext.saintapediafeedback.widget' );
@@ -64,7 +79,7 @@ class Hooks {
 	 */
 	public static function onSidebarBeforeOutput( Skin $skin, &$sidebar ): void {
 		$user = $skin->getUser();
-		if ( !$user->isAllowed( 'saintapediafeedback-view' ) ) {
+		if ( !FeedbackAccess::userCanManage( $user ) ) {
 			return;
 		}
 		$title = $skin->getTitle();
@@ -82,17 +97,132 @@ class Hooks {
 			(string)$title->getArticleID()
 		)->getLocalURL();
 
+		$counts = [ 'new' => 0, 'open' => 0 ];
+		try {
+			$store = MediaWikiServices::getInstance()->getService( 'SaintapediaFeedback.FeedbackStore' );
+			$counts = $store->getPageCounts( $title->getArticleID() );
+		} catch ( \Throwable $e ) {
+			// store/table may not exist yet
+		}
+
+		$text = $skin->msg( 'saintapediafeedback-toolbox' )->text();
+		if ( !empty( $counts['new'] ) ) {
+			$text = $skin->msg( 'saintapediafeedback-toolbox-count' )
+				->numParams( (int)$counts['new'] )
+				->text();
+		} elseif ( !empty( $counts['open'] ) ) {
+			$text = $skin->msg( 'saintapediafeedback-toolbox-open' )
+				->numParams( (int)$counts['open'] )
+				->text();
+		}
+
 		$sidebar['TOOLBOX']['saintapediafeedback'] = [
 			'id'   => 't-saintapediafeedback',
 			'href' => $url,
-			'text' => $skin->msg( 'saintapediafeedback-toolbox' )->text(),
+			'text' => $text,
 		];
 	}
 
 	public static function onLoadExtensionSchemaUpdates( DatabaseUpdater $updater ): void {
+		$dir = dirname( __DIR__ ) . '/sql';
 		$updater->addExtensionTable(
 			'spf_feedback',
-			dirname( __DIR__ ) . '/sql/tables.sql'
+			$dir . '/tables.sql'
 		);
+		$updater->addExtensionTable(
+			'spf_feedback_log',
+			$dir . '/feedback_log.sql'
+		);
+		// Incremental columns for installs that already had spf_feedback
+		$updater->addExtensionField(
+			'spf_feedback',
+			'fb_status_user_id',
+			$dir . '/patch-audit-priority.sql'
+		);
+		$updater->addExtensionField(
+			'spf_feedback',
+			'fb_work_note',
+			$dir . '/patch-work-notes-public.sql'
+		);
+	}
+
+	/**
+	 * Invalidate access-group cache when MediaWiki:SaintapediaFeedback-access is edited.
+	 */
+	public static function onPageSaveComplete(
+		$wikiPage,
+		$user,
+		$summary,
+		$flags,
+		$revisionRecord,
+		$editResult
+	): void {
+		self::maybeInvalidateAccessCache( $wikiPage->getTitle() );
+	}
+
+	/**
+	 * Deleting the access page must reset to PHP defaults immediately (not wait TTL).
+	 */
+	public static function onPageDeleteComplete(
+		$page,
+		$deleter,
+		$reason,
+		$pageID,
+		$deletedRev,
+		$logEntry,
+		$archivedRevisionCount
+	): void {
+		try {
+			$title = Title::castFromPageIdentity( $page );
+		} catch ( \Throwable $e ) {
+			$title = null;
+		}
+		if ( !$title && is_object( $page ) && method_exists( $page, 'getDBkey' ) ) {
+			// Older signatures sometimes pass Title-like objects
+			$title = Title::makeTitleSafe( $page->getNamespace(), $page->getDBkey() );
+		}
+		self::maybeInvalidateAccessCache( $title );
+	}
+
+	/**
+	 * Moving/renaming the access page must not leave a stale cache entry.
+	 */
+	public static function onPageMoveComplete(
+		$old,
+		$new,
+		$user,
+		$pageid,
+		$redirid,
+		$reason,
+		$revision
+	): void {
+		$access = FeedbackAccess::getAccessPageTitle();
+		if ( !$access ) {
+			return;
+		}
+		foreach ( [ $old, $new ] as $lt ) {
+			try {
+				$t = Title::newFromLinkTarget( $lt );
+				if ( $t && ( $t->equals( $access ) || $t->getPrefixedText() === $access->getPrefixedText() ) ) {
+					FeedbackAccess::invalidateCache();
+					return;
+				}
+			} catch ( \Throwable $e ) {
+				// ignore
+			}
+		}
+	}
+
+	/**
+	 * @param \MediaWiki\Title\Title|Title|null $title
+	 */
+	private static function maybeInvalidateAccessCache( $title ): void {
+		if ( !$title ) {
+			return;
+		}
+		$access = FeedbackAccess::getAccessPageTitle();
+		if ( $access && $title->equals( $access ) ) {
+			FeedbackAccess::invalidateCache();
+		}
 	}
 }
