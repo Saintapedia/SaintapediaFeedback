@@ -7,6 +7,7 @@ use MediaWiki\Config\Config;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Output\OutputPage;
 use Skin;
+use SpecialPage;
 
 class Hooks {
 
@@ -53,6 +54,39 @@ class Hooks {
 		] );
 
 		$out->addModules( 'ext.saintapediafeedback.widget' );
+	}
+
+	/**
+	 * Toolbox link for editors: jump to this page's feedback on the special page.
+	 *
+	 * @param Skin $skin
+	 * @param array &$sidebar
+	 */
+	public static function onSidebarBeforeOutput( Skin $skin, &$sidebar ): void {
+		$user = $skin->getUser();
+		if ( !$user->isAllowed( 'saintapediafeedback-view' ) ) {
+			return;
+		}
+		$title = $skin->getTitle();
+		if ( !$title || !$title->exists() || $title->isSpecialPage() ) {
+			return;
+		}
+		$config = self::getConfig();
+		$allowedNamespaces = $config->get( 'SaintapediaFeedbackNamespaces' );
+		if ( !in_array( $title->getNamespace(), $allowedNamespaces, true ) ) {
+			return;
+		}
+
+		$url = SpecialPage::getTitleFor(
+			'SaintapediaFeedback',
+			(string)$title->getArticleID()
+		)->getLocalURL();
+
+		$sidebar['TOOLBOX']['saintapediafeedback'] = [
+			'id'   => 't-saintapediafeedback',
+			'href' => $url,
+			'text' => $skin->msg( 'saintapediafeedback-toolbox' )->text(),
+		];
 	}
 
 	public static function onLoadExtensionSchemaUpdates( DatabaseUpdater $updater ): void {

@@ -271,3 +271,33 @@
 	margin-top: 1.5em;
 	font-size: 0.875rem;
 }
+
+.spf-bulk-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 14px;
+	margin: 0 0 0.75rem;
+	padding: 10px 12px;
+	background: #f8f9fa;
+	border: 1px solid #eaecf0;
+	border-radius: 8px;
+}
+
+.spf-bulk-select-all {
+	font-size: 0.875rem;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.spf-row-check {
+	margin-right: 4px;
+}
+
+.spf-bulk-toolbar select {
+	padding: 6px 8px;
+	border: 1px solid #c8ccd1;
+	border-radius: 4px;
+	background: #fff;
+	font-size: 0.875rem;
+}

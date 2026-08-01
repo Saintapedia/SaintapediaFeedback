@@ -43,6 +43,7 @@
 	"saintapediafeedback-export-link-text": "Export as JSON",
 	"saintapediafeedback-view": "View article feedback",
 	"right-saintapediafeedback-view": "View and manage article feedback",
+	"saintapediafeedback-toolbox": "Page feedback",
 	"saintapediafeedback-dashboard-title": "Feedback dashboard",
 	"saintapediafeedback-dashboard-empty": "No feedback matches these filters.",
 	"saintapediafeedback-dashboard-showing": "Showing $1–$2 of $3",
@@ -52,6 +53,8 @@
 	"saintapediafeedback-dashboard-clear-page": "Clear page filter",
 	"saintapediafeedback-lookup-help": "Opens the full feedback list for that article (including reviewed/dismissed, or empty).",
 	"saintapediafeedback-filter-page": "Article (optional)",
+	"saintapediafeedback-filter-search": "Search",
+	"saintapediafeedback-filter-search-placeholder": "Comment or page title…",
 	"saintapediafeedback-status-new": "New",
 	"saintapediafeedback-status-reviewed": "Reviewed",
 	"saintapediafeedback-status-actioned": "Actioned",
@@ -66,5 +69,15 @@
 	"saintapediafeedback-sort-oldest": "Oldest first",
 	"saintapediafeedback-pagination": "Pagination",
 	"saintapediafeedback-pagination-prev": "← Newer",
-	"saintapediafeedback-pagination-next": "Older →"
+	"saintapediafeedback-pagination-next": "Older →",
+	"saintapediafeedback-bulk-select-all": "Select all on page",
+	"saintapediafeedback-bulk-action": "Bulk action…",
+	"saintapediafeedback-bulk-apply": "Apply to selected",
+	"saintapediafeedback-bulk-updated": "Updated $1 {{PLURAL:$1|item|items}}.",
+	"notification-header-saintapediafeedback-new": "New feedback on $1",
+	"notification-body-saintapediafeedback-new": "$1",
+	"notification-body-saintapediafeedback-new-cats": "Categories: $1",
+	"notification-link-saintapediafeedback-new": "View feedback",
+	"echo-pref-tooltip-saintapediafeedback": "Notifications when readers submit article feedback",
+	"echo-category-title-saintapediafeedback": "Article feedback"
 }

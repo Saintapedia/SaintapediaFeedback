@@ -72,8 +72,7 @@ class FeedbackStore {
 	/**
 	 * Dashboard listing with filters and sort.
 	 *
-	 * @param array $filters Keys: status (string|null), category (string|null),
-	 *                       pageId (int|null), sort (newest|oldest)
+	 * @param array $filters Keys: status, category, pageId, sort, search
 	 * @return object[]
 	 */
 	public function getDashboard( array $filters, int $limit = 50, int $offset = 0 ): array {
@@ -91,7 +90,7 @@ class FeedbackStore {
 	}
 
 	/**
-	 * Counts keyed by status for summary chips (respects page/category filters only).
+	 * Counts keyed by status for summary chips (respects page/category/search filters).
 	 *
 	 * @return array<string,int>
 	 */
@@ -154,6 +153,15 @@ class FeedbackStore {
 			);
 		}
 
+		$search = FeedbackFilters::sanitizeSearch( $filters['search'] ?? null );
+		if ( $search !== '' ) {
+			$like = $db->buildLike( $db->anyString(), $search, $db->anyString() );
+			$conds[] = $db->makeList( [
+				'fb_comment ' . $like,
+				'fb_page_title ' . $like,
+			], LIST_OR );
+		}
+
 		$sort = ( $filters['sort'] ?? 'newest' ) === 'oldest' ? 'ASC' : 'DESC';
 		$options = [ 'ORDER BY' => "fb_timestamp $sort, fb_id $sort" ];
 		if ( $limit !== null ) {
@@ -164,6 +172,27 @@ class FeedbackStore {
 		}
 
 		return [ $conds, $options ];
+	}
+
+	/**
+	 * Bulk-update workflow status for many feedback ids.
+	 *
+	 * @param int[] $ids
+	 * @return int Number of rows updated
+	 */
+	public function updateStatusBulk( array $ids, string $status ): int {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
+		if ( !$ids || !in_array( $status, FeedbackFilters::processActions(), true ) ) {
+			return 0;
+		}
+		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
+		$db->update(
+			'spf_feedback',
+			[ 'fb_status' => $status ],
+			[ 'fb_id' => $ids ],
+			__METHOD__
+		);
+		return $db->affectedRows();
 	}
 
 	/** Fetch unprocessed feedback rows for LLM batch processing. */
