@@ -64,7 +64,7 @@ class Hooks {
 	 */
 	public static function onSidebarBeforeOutput( Skin $skin, &$sidebar ): void {
 		$user = $skin->getUser();
-		if ( !$user->isAllowed( 'saintapediafeedback-view' ) ) {
+		if ( !FeedbackAccess::userCanManage( $user ) ) {
 			return;
 		}
 		$title = $skin->getTitle();
@@ -94,5 +94,29 @@ class Hooks {
 			'spf_feedback',
 			dirname( __DIR__ ) . '/sql/tables.sql'
 		);
+	}
+
+	/**
+	 * Invalidate access-group cache when MediaWiki:SaintapediaFeedback-access is edited.
+	 *
+	 * @param WikiPage $wikiPage
+	 * @param UserIdentity $user
+	 * @param string $summary
+	 * @param int $flags
+	 * @param EditResult $editResult
+	 */
+	public static function onPageSaveComplete(
+		$wikiPage,
+		$user,
+		$summary,
+		$flags,
+		$revisionRecord,
+		$editResult
+	): void {
+		$title = $wikiPage->getTitle();
+		$access = FeedbackAccess::getAccessPageTitle();
+		if ( $access && $title->equals( $access ) ) {
+			FeedbackAccess::invalidateCache();
+		}
 	}
 }

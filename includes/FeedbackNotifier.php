@@ -65,7 +65,7 @@ class FeedbackNotifier {
 				continue;
 			}
 			$user = $userFactory->newFromName( $name );
-			if ( $user && $user->isRegistered() && $user->isAllowed( 'saintapediafeedback-view' ) ) {
+			if ( $user && $user->isRegistered() && FeedbackAccess::userCanManage( $user ) ) {
 				$recipients[] = $user->getId();
 			}
 		}

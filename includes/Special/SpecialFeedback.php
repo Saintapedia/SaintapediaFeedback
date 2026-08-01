@@ -4,10 +4,13 @@ namespace MediaWiki\Extension\SaintapediaFeedback\Special;
 
 use ErrorPageError;
 use Html;
+use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackFilters;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
+use PermissionsError;
 use SpecialPage;
 use Title;
+use User;
 
 /**
  * Editor dashboard + per-page feedback review.
@@ -24,8 +27,30 @@ class SpecialFeedback extends SpecialPage {
 	private FeedbackStore $store;
 
 	public function __construct( FeedbackStore $store ) {
+		// Restriction right kept for Special:ListGroupRights / LocalSettings;
+		// actual access is FeedbackAccess (wiki page + defaults + explicit right).
 		parent::__construct( 'SaintapediaFeedback', 'saintapediafeedback-view' );
 		$this->store = $store;
+	}
+
+	/**
+	 * Allow access via MediaWiki:SaintapediaFeedback-access groups (default: all logged-in),
+	 * or the saintapediafeedback-view right.
+	 *
+	 * @param User $user
+	 * @return bool
+	 */
+	public function userCanExecute( $user ) {
+		return FeedbackAccess::userCanManage( $user );
+	}
+
+	/**
+	 * @throws PermissionsError
+	 */
+	public function checkPermissions() {
+		if ( !$this->userCanExecute( $this->getUser() ) ) {
+			throw new PermissionsError( 'saintapediafeedback-view' );
+		}
 	}
 
 	public function execute( $par ): void {
@@ -83,6 +108,19 @@ class SpecialFeedback extends SpecialPage {
 	private function showDashboard(): void {
 		$out = $this->getOutput();
 		$out->setPageTitle( $this->msg( 'saintapediafeedback-dashboard-title' ) );
+
+		// Help editors find the access config page
+		$accessTitle = FeedbackAccess::getAccessPageTitle();
+		if ( $accessTitle ) {
+			$out->addSubtitle(
+				$this->msg( 'saintapediafeedback-access-help' )
+					->rawParams(
+						Html::element( 'a', [ 'href' => $accessTitle->getLocalURL() ],
+							$accessTitle->getPrefixedText() )
+					)
+					->parse()
+			);
+		}
 
 		$filters = $this->getFiltersFromRequest();
 		$offset = max( 0, $this->getRequest()->getInt( 'offset' ) );

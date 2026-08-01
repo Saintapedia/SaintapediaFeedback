@@ -1,0 +1,188 @@
+<?php
+
+namespace MediaWiki\Extension\SaintapediaFeedback;
+
+use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\Title;
+use MediaWiki\User\User;
+use MediaWiki\User\UserIdentity;
+
+/**
+ * Who may view/process the feedback dashboard.
+ *
+ * Configurable via a MediaWiki namespace page (default:
+ * MediaWiki:SaintapediaFeedback-access). One group name per line.
+ *
+ * Special tokens:
+ * - user — any registered account (option C: all logged-in users) [default]
+ * - *    — everyone including anons (rarely appropriate)
+ * - autoconfirmed, sysop, editor, … — normal MediaWiki groups
+ *
+ * Lines starting with # or ; and blank lines are ignored.
+ *
+ * Default when the page is missing or empty: [ 'user' ].
+ * Users who hold saintapediafeedback-view via LocalSettings always pass.
+ */
+class FeedbackAccess {
+
+	public const DEFAULT_GROUPS = [ 'user' ];
+
+	public const CACHE_KEY = 'saintapediafeedback-access-groups';
+
+	/**
+	 * Whether this user may open the dashboard / toolbox / export.
+	 */
+	public static function userCanManage( UserIdentity $user ): bool {
+		$userObj = $user instanceof User
+			? $user
+			: MediaWikiServices::getInstance()->getUserFactory()->newFromUserIdentity( $user );
+
+		// Explicit right from LocalSettings / extension.json always wins
+		if ( $userObj->isAllowed( 'saintapediafeedback-view' ) ) {
+			return true;
+		}
+
+		$groups = self::getAllowedGroups();
+		if ( !$groups ) {
+			$groups = self::DEFAULT_GROUPS;
+		}
+
+		if ( in_array( '*', $groups, true ) ) {
+			return true;
+		}
+
+		// Option C: any registered account
+		if ( in_array( 'user', $groups, true ) && $userObj->isRegistered() ) {
+			return true;
+		}
+
+		$effective = MediaWikiServices::getInstance()
+			->getUserGroupManager()
+			->getUserEffectiveGroups( $userObj );
+
+		foreach ( $groups as $g ) {
+			if ( $g === 'user' || $g === '*' ) {
+				continue;
+			}
+			if ( in_array( $g, $effective, true ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Groups currently allowed (from wiki page or PHP defaults).
+	 *
+	 * @return string[]
+	 */
+	public static function getAllowedGroups(): array {
+		$services = MediaWikiServices::getInstance();
+		$config = $services->getMainConfig();
+		$cache = $services->getMainWANObjectCache();
+
+		$pageName = $config->get( 'SaintapediaFeedbackAccessPage' );
+		if ( !is_string( $pageName ) || $pageName === '' ) {
+			$pageName = 'SaintapediaFeedback-access';
+		}
+
+		$defaults = $config->get( 'SaintapediaFeedbackAccessGroups' );
+		if ( !is_array( $defaults ) || !$defaults ) {
+			$defaults = self::DEFAULT_GROUPS;
+		}
+
+		return $cache->getWithSetCallback(
+			$cache->makeKey( self::CACHE_KEY, md5( $pageName ) ),
+			$cache::TTL_HOUR,
+			static function () use ( $pageName, $defaults ) {
+				return self::loadGroupsFromPage( $pageName, $defaults );
+			}
+		);
+	}
+
+	/**
+	 * @param string $pageName DB key under NS_MEDIAWIKI (no namespace prefix)
+	 * @param string[] $defaults
+	 * @return string[]
+	 */
+	public static function loadGroupsFromPage( string $pageName, array $defaults ): array {
+		$title = Title::makeTitleSafe( NS_MEDIAWIKI, $pageName );
+		if ( !$title || !$title->exists() ) {
+			return array_values( $defaults );
+		}
+
+		$services = MediaWikiServices::getInstance();
+		$wikipage = $services->getWikiPageFactory()->newFromTitle( $title );
+		$content = $wikipage->getContent();
+		if ( !$content ) {
+			return array_values( $defaults );
+		}
+
+		$text = method_exists( $content, 'getText' )
+			? $content->getText()
+			: $content->getTextForSearchIndex();
+
+		$groups = self::parseGroupList( (string)$text );
+		if ( !$groups ) {
+			return array_values( $defaults );
+		}
+		return $groups;
+	}
+
+	/**
+	 * Parse wiki page body into group tokens (pure; unit-testable).
+	 *
+	 * @return string[]
+	 */
+	public static function parseGroupList( string $text ): array {
+		$groups = [];
+		foreach ( preg_split( '/\r\n|\r|\n/', $text ) as $line ) {
+			$line = trim( $line );
+			if ( $line === '' || $line[0] === '#' || $line[0] === ';' ) {
+				continue;
+			}
+			// Allow "* user" wiki-list markup
+			$line = preg_replace( '/^\*+\s*/', '', $line );
+			$line = trim( $line );
+			if ( strpos( $line, '#' ) !== false ) {
+				$line = trim( substr( $line, 0, strpos( $line, '#' ) ) );
+			}
+			if ( $line === '' ) {
+				continue;
+			}
+			$groups[] = $line;
+		}
+		$out = [];
+		foreach ( $groups as $g ) {
+			if ( !in_array( $g, $out, true ) ) {
+				$out[] = $g;
+			}
+		}
+		return $out;
+	}
+
+	/** Drop WAN cache after the access page is edited. */
+	public static function invalidateCache(): void {
+		$services = MediaWikiServices::getInstance();
+		$config = $services->getMainConfig();
+		$pageName = $config->get( 'SaintapediaFeedbackAccessPage' );
+		if ( !is_string( $pageName ) || $pageName === '' ) {
+			$pageName = 'SaintapediaFeedback-access';
+		}
+		$cache = $services->getMainWANObjectCache();
+		$cache->delete( $cache->makeKey( self::CACHE_KEY, md5( $pageName ) ) );
+	}
+
+	/**
+	 * Title of the configuration page (for help links).
+	 */
+	public static function getAccessPageTitle(): ?Title {
+		$services = MediaWikiServices::getInstance();
+		$pageName = $services->getMainConfig()->get( 'SaintapediaFeedbackAccessPage' );
+		if ( !is_string( $pageName ) || $pageName === '' ) {
+			$pageName = 'SaintapediaFeedback-access';
+		}
+		return Title::makeTitleSafe( NS_MEDIAWIKI, $pageName );
+	}
+}
