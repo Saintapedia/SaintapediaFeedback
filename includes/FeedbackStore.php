@@ -277,8 +277,11 @@ class FeedbackStore {
 		$old = (string)$row->fb_status;
 
 		$workNote = isset( $opts['workNote'] ) ? $this->clampNote( $opts['workNote'] ) : null;
-		$resPublic = !empty( $opts['resolutionPublic'] ) && $status === 'actioned';
-		$resSummary = isset( $opts['resolutionSummary'] )
+		// Default: actioned items are public (product: resolutions list should fill when work is done).
+		// Pass resolutionPublic=false to keep an actioned item private.
+		$resPublic = $status === 'actioned'
+			&& ( !array_key_exists( 'resolutionPublic', $opts ) || !empty( $opts['resolutionPublic'] ) );
+		$resSummary = array_key_exists( 'resolutionSummary', $opts )
 			? $this->clampNote( $opts['resolutionSummary'], 1000 )
 			: null;
 
@@ -292,11 +295,12 @@ class FeedbackStore {
 			$set['fb_work_note'] = $workNote;
 		}
 		if ( $status === 'actioned' ) {
-			if ( array_key_exists( 'resolutionPublic', $opts ) ) {
-				$set['fb_resolution_public'] = $resPublic ? 1 : 0;
-			}
-			if ( array_key_exists( 'resolutionSummary', $opts ) ) {
+			$set['fb_resolution_public'] = $resPublic ? 1 : 0;
+			if ( $resSummary !== null ) {
 				$set['fb_resolution_summary'] = $resSummary;
+			} elseif ( $resPublic && empty( $row->fb_resolution_summary ) ) {
+				// Leave null — UI uses default "Addressed." message for empty summary
+				$set['fb_resolution_summary'] = null;
 			}
 		} elseif ( $status === 'dismissed' ) {
 			// Dismissed items should not stay on the public resolution list
@@ -319,16 +323,19 @@ class FeedbackStore {
 
 	/**
 	 * Bulk-update workflow status for many feedback ids (with audit).
-	 * Bulk path does not set public resolution (use single-item action for that).
+	 * Bulk "actioned" defaults to public resolution (same as single-item);
+	 * pass $resolutionPublic=false to keep private.
 	 *
 	 * @param int[] $ids
+	 * @param bool|null $resolutionPublic When actioned: true/false publish flag; null = default public
 	 * @return int Number of rows updated
 	 */
 	public function updateStatusBulk(
 		array $ids,
 		string $status,
 		?int $actorUserId = null,
-		?string $workNote = null
+		?string $workNote = null,
+		?bool $resolutionPublic = null
 	): int {
 		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
 		if ( !$ids || !in_array( $status, FeedbackFilters::processActions(), true ) ) {
@@ -337,6 +344,10 @@ class FeedbackStore {
 		$opts = [];
 		if ( $workNote !== null && $workNote !== '' ) {
 			$opts['workNote'] = $workNote;
+		}
+		// Same product default as single-item: actioned → public unless explicitly false
+		if ( $status === 'actioned' ) {
+			$opts['resolutionPublic'] = $resolutionPublic !== false;
 		}
 		$n = 0;
 		foreach ( $ids as $id ) {

@@ -90,7 +90,7 @@
 	"saintapediafeedback-work-note": "Label for private editor work notes on dashboard",
 	"saintapediafeedback-work-note-placeholder": "Placeholder for private work note",
 	"saintapediafeedback-actioned-hint": "Hint above actioned form encouraging a work note",
-	"saintapediafeedback-make-public": "Checkbox to publish resolution on the public list",
+	"saintapediafeedback-make-public": "Checkbox (default on) to publish resolution on the public list; used on single-item and bulk actioned flows",
 	"saintapediafeedback-resolution-summary-placeholder": "Placeholder for public resolution summary",
 	"saintapediafeedback-resolution-is-public": "Badge when an item is on the public resolutions list",
 	"saintapediafeedback-resolutions-title": "Title for public resolutions special subpage without a page",
