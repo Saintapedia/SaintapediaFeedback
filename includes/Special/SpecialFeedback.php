@@ -604,8 +604,13 @@ class SpecialFeedback extends SpecialPage {
 			'rows' => 2,
 			'placeholder' => $this->msg( 'saintapediafeedback-work-note-placeholder' )->text(),
 		] );
-		// Same control as single-item actioned form: default on, uncheck to keep private
+		// Same control as single-item actioned form: default on, uncheck to keep private.
+		// Shown only when bulk action is "actioned" (see special.js); server ignores otherwise.
 		$html .= Html::hidden( 'spfpublic_present', '1' );
+		$html .= Html::openElement( 'span', [
+			'id' => 'spf-bulk-public-wrap',
+			'class' => 'spf-bulk-public-wrap',
+		] );
 		$html .= Html::rawElement( 'label', [ 'class' => 'spf-public-check' ],
 			Html::input( 'spfpublic', '1', 'checkbox', [
 				'checked' => 'checked',
@@ -613,6 +618,7 @@ class SpecialFeedback extends SpecialPage {
 			] ) . ' '
 			. $this->msg( 'saintapediafeedback-make-public' )->escaped()
 		);
+		$html .= Html::closeElement( 'span' );
 		$html .= Html::submitButton(
 			$this->msg( 'saintapediafeedback-bulk-apply' )->text(),
 			[ 'class' => 'spf-filter-submit' ]
