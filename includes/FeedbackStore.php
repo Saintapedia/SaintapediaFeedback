@@ -323,16 +323,19 @@ class FeedbackStore {
 
 	/**
 	 * Bulk-update workflow status for many feedback ids (with audit).
-	 * Bulk "actioned" defaults to public resolution (same as single-item).
+	 * Bulk "actioned" defaults to public resolution (same as single-item);
+	 * pass $resolutionPublic=false to keep private.
 	 *
 	 * @param int[] $ids
+	 * @param bool|null $resolutionPublic When actioned: true/false publish flag; null = default public
 	 * @return int Number of rows updated
 	 */
 	public function updateStatusBulk(
 		array $ids,
 		string $status,
 		?int $actorUserId = null,
-		?string $workNote = null
+		?string $workNote = null,
+		?bool $resolutionPublic = null
 	): int {
 		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
 		if ( !$ids || !in_array( $status, FeedbackFilters::processActions(), true ) ) {
@@ -342,9 +345,9 @@ class FeedbackStore {
 		if ( $workNote !== null && $workNote !== '' ) {
 			$opts['workNote'] = $workNote;
 		}
-		// Explicit true so actioned bulk publishes; omit would also default true
+		// Same product default as single-item: actioned → public unless explicitly false
 		if ( $status === 'actioned' ) {
-			$opts['resolutionPublic'] = true;
+			$opts['resolutionPublic'] = $resolutionPublic !== false;
 		}
 		$n = 0;
 		foreach ( $ids as $id ) {

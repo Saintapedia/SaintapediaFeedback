@@ -12,7 +12,7 @@ Product direction for SaintapediaFeedback: help **enterprise editors** improve p
 | **Public count chip** | **Default off** — use public *resolutions* instead of a noisy badge |
 | Watchlist Echo | Default **on** — only watchers who **may manage** feedback (same gate as dashboard; no comment leak to casual watchers) |
 | **Talk pages** | **No auto-post.** Optional checkbox: short **link only** to public resolutions |
-| **Actioned → public** | **Default on** when marking actioned (uncheck to keep private). Public list shows summary + categories, not raw reader text |
+| **Actioned → public** | **Default on** when marking actioned (single or bulk; uncheck to keep private). Public list shows summary + categories, not raw reader text |
 | LLM | Export/batch ready; proactive AI edits via future job |
 | SME auth | `fb_priority` reserved; Login.gov-class IdP later |
 
