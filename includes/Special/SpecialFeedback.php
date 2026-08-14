@@ -146,7 +146,6 @@ class SpecialFeedback extends SpecialPage {
 		}
 
 		$filters = $this->getFiltersFromRequest();
-		$offset = max( 0, $this->getRequest()->getInt( 'offset' ) );
 		$limit = self::PAGE_SIZE;
 
 		// Title typed into filter form → resolve to pageId for dashboard filter
@@ -160,6 +159,11 @@ class SpecialFeedback extends SpecialPage {
 
 		$counts = $this->store->countByStatus( $filters );
 		$total = $this->store->countDashboard( $filters );
+		$offset = FeedbackFilters::clampOffset(
+			$this->getRequest()->getInt( 'offset' ),
+			$total,
+			$limit
+		);
 		$rows = $this->store->getDashboard( $filters, $limit, $offset );
 
 		$out->addHTML( $this->renderPageLookupForm() );
