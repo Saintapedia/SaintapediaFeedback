@@ -91,7 +91,8 @@ class FeedbackStore {
 
 	/** Count submissions from a given IP hash within the past 24 hours. */
 	public function countRecentByIpHash( string $ipHash ): int {
-		// Primary: replica check-then-act under-counts concurrent submits.
+		// Primary avoids replica-lag undercount. Concurrent submits can still
+		// both pass this COUNT before either INSERT (no lock / transaction).
 		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
 		$cutoff = $db->timestamp( time() - 86400 );
 		return (int)$db->selectField(

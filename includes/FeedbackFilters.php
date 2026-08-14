@@ -100,4 +100,17 @@ class FeedbackFilters {
 		}
 		return $opts;
 	}
+
+	/**
+	 * Add a pager offset to a query map when the user is not on page 1.
+	 *
+	 * @param array<string,mixed> $query
+	 * @return array<string,mixed>
+	 */
+	public static function withOffset( array $query, int $offset ): array {
+		if ( $offset > 0 ) {
+			$query['offset'] = $offset;
+		}
+		return $query;
+	}
 }

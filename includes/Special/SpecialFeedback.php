@@ -198,7 +198,9 @@ class SpecialFeedback extends SpecialPage {
 
 		// Bulk form is only the toolbar; row checkboxes associate via form="spf-bulk-form"
 		// so single-item status forms are not nested (invalid HTML).
-		$bulkAction = $this->getPageTitle()->getLocalURL( $this->filtersToQuery( $filters ) );
+		$bulkAction = $this->getPageTitle()->getLocalURL(
+			FeedbackFilters::withOffset( $this->filtersToQuery( $filters ), $offset )
+		);
 		$out->addHTML( Html::openElement( 'form', [
 			'method' => 'post',
 			'action' => $bulkAction,
@@ -438,18 +440,16 @@ class SpecialFeedback extends SpecialPage {
 	 * PRG: after a successful POST, redirect so refresh does not re-submit.
 	 */
 	private function redirectAfterMutation( array $flash ): void {
+		$offset = $this->getRequest()->getInt( 'offset' );
 		if ( $this->subpage !== '' && ctype_digit( $this->subpage ) ) {
-			$query = $flash;
-			$offset = $this->getRequest()->getInt( 'offset' );
-			if ( $offset > 0 ) {
-				$query['offset'] = $offset;
-			}
+			$query = FeedbackFilters::withOffset( $flash, $offset );
 			$url = $this->getPageTitle( $this->subpage )->getLocalURL( $query );
 		} else {
-			$url = $this->getPageTitle()->getLocalURL( array_merge(
+			$query = FeedbackFilters::withOffset(
 				$this->filtersToQuery( $this->getFiltersFromRequest() ),
-				$flash
-			) );
+				$offset
+			);
+			$url = $this->getPageTitle()->getLocalURL( array_merge( $query, $flash ) );
 		}
 		$this->getOutput()->redirect( $url );
 	}
@@ -1009,10 +1009,16 @@ class SpecialFeedback extends SpecialPage {
 				. '</div>' );
 		}
 
-		// Status action forms: POST + CSRF; work note encouraged (especially for actioned)
+		// Status action forms: POST + CSRF; work note encouraged (especially for actioned).
+		// Include offset so PRG after submit stays on the page the editor was triaging.
+		$offset = max( 0, $this->getRequest()->getInt( 'offset' ) );
 		$actionUrl = $showPage
-			? $this->getPageTitle()->getLocalURL( $this->filtersToQuery( $this->getFiltersFromRequest() ) )
-			: $this->getPageTitle( (string)$row->fb_page_id )->getLocalURL();
+			? $this->getPageTitle()->getLocalURL(
+				FeedbackFilters::withOffset( $this->filtersToQuery( $this->getFiltersFromRequest() ), $offset )
+			)
+			: $this->getPageTitle( (string)$row->fb_page_id )->getLocalURL(
+				FeedbackFilters::withOffset( [], $offset )
+			);
 
 		$out->addHTML( '<div class="spf-feedback-actions">' );
 		foreach ( [ 'reviewed', 'actioned', 'dismissed' ] as $status ) {

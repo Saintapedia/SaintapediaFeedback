@@ -72,4 +72,17 @@ class FeedbackFiltersTest extends TestCase {
 		$opts = FeedbackFilters::statusUpdateOpts( "  updated sources  ", '', true );
 		$this->assertSame( '  updated sources  ', $opts['workNote'] );
 	}
+
+	public function testWithOffsetOmitsZeroAndNegative(): void {
+		$base = [ 'status' => 'new' ];
+		$this->assertSame( $base, FeedbackFilters::withOffset( $base, 0 ) );
+		$this->assertSame( $base, FeedbackFilters::withOffset( $base, -10 ) );
+	}
+
+	public function testWithOffsetKeepsPositivePager(): void {
+		$this->assertSame(
+			[ 'status' => 'new', 'offset' => 50 ],
+			FeedbackFilters::withOffset( [ 'status' => 'new' ], 50 )
+		);
+	}
 }
