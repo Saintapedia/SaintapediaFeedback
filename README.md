@@ -167,7 +167,7 @@ Anyone who has the **`saintapediafeedback-view`** right **or** matches a group o
 
 ## Multi-wiki
 
-One codebase, per-wiki LocalSettings (mode, limits, captcha, notify lists, keys). See also [docs/LLM.md](docs/LLM.md) for the LLM-oriented export pipeline.
+One codebase, per-wiki LocalSettings (mode, limits, captcha, notify lists, keys). See also [docs/LLM.md](docs/LLM.md) for the LLM-oriented export pipeline and the `ProcessFeedbackLlm.php` maintenance script.
 
 ## Development / tests
 
@@ -179,6 +179,25 @@ php phpunit.phar -c phpunit.xml.dist
 # or
 ./vendor/bin/phpunit -c phpunit.xml.dist
 ```
+
+## LLM pull job (optional)
+
+Editors can still **Export as JSON**. For a cron / sidecar, set a webhook and run the maintenance script. The extension does **not** call a model itself — it POSTs `{count,items}` (no email, IP hash, or work notes) and marks `fb_llm_processed` on HTTP 2xx. Workflow status stays editor-owned.
+
+```php
+$wgSaintapediaFeedbackLlmWebhook = 'https://llm.example.org/hooks/feedback';
+$wgSaintapediaFeedbackLlmWebhookToken = getenv( 'SAINTAPEDIA_LLM_WEBHOOK_TOKEN' ) ?: '';
+$wgSaintapediaFeedbackLlmBatchSize = 100;
+```
+
+```bash
+php maintenance/run.php extensions/SaintapediaFeedback/maintenance/ProcessFeedbackLlm.php --dry-run
+php maintenance/run.php extensions/SaintapediaFeedback/maintenance/ProcessFeedbackLlm.php
+# Canasta:
+# canasta maintenance exec -i <instance> -- php maintenance/run.php extensions/SaintapediaFeedback/maintenance/ProcessFeedbackLlm.php
+```
+
+Point the webhook at your own worker (SpaceXAI / `api.x.ai` sidecar, or anything that accepts the JSON).
 
 ## Completing the loop
 
@@ -194,6 +213,8 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 ```
 
 ## Version
+
+**1.5.0** — `ProcessFeedbackLlm.php` maintenance script + webhook config for the LLM pull job.
 
 **1.4.2** — preserve work notes on status change; primary-DB rate limit; paginate per-article view; lone `*` access token; omit PII from list queries; IP-hash index; read-only / PRG hardening.
 

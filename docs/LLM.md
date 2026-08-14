@@ -64,9 +64,9 @@ Reader → API (captcha, rate limit) → spf_feedback
 **Do not** call an LLM from the request that submits feedback (latency, keys, abuse). Prefer:
 
 1. **Pull job** (cron / systemd / Canasta sidecar):  
-   - Call `getPendingLlmBatch()` via a **maintenance script** (to add) or authenticated export URL.  
-   - Send only `id`, `pageTitle`, `categories`, `comment`, `timestamp` to the model.  
-   - On success: `markLlmProcessed( $ids )`.  
+   - Run `maintenance/ProcessFeedbackLlm.php` (or authenticated export URL).  
+   - Send only `id`, `pageId`, `pageTitle`, `categories`, `comment`, `timestamp`, `status` to the model.  
+   - On HTTP 2xx: `markLlmProcessed( $ids )`.  
 2. **Human still owns status** — LLM can suggest tags or draft replies; `fb_status` stays editor-controlled unless you deliberately automate.
 
 ## Example offline prompt (illustrative)
@@ -78,15 +78,39 @@ For each item, return JSON: { "id", "priority": "high|medium|low",
 Do not invent page content; only use the feedback fields provided.
 ```
 
+## Maintenance script (shipped)
+
+`maintenance/ProcessFeedbackLlm.php` is the MediaWiki `Maintenance` interface for the pull job.
+
+```bash
+php maintenance/run.php extensions/SaintapediaFeedback/maintenance/ProcessFeedbackLlm.php --dry-run
+php maintenance/run.php extensions/SaintapediaFeedback/maintenance/ProcessFeedbackLlm.php --limit 50
+```
+
+| Config | Default | Role |
+|--------|---------|------|
+| `$wgSaintapediaFeedbackLlmWebhook` | `''` | POST target; empty disables the job unless `--webhook` |
+| `$wgSaintapediaFeedbackLlmWebhookToken` | `''` | Optional `Authorization: Bearer …` |
+| `$wgSaintapediaFeedbackLlmBatchSize` | `100` | Default `--limit` (capped at 500) |
+
+PHP surface (unit-tested, no MW required):
+
+- `Llm\FeedbackLlmBatchSource` — store contract (`getPendingLlmBatch` / `markLlmProcessed`)
+- `Llm\FeedbackLlmPoster` — HTTP POST contract
+- `Llm\FeedbackLlmPayload::fromRow()` — PII-safe item shape
+- `Llm\FeedbackLlmBatchRunner` — dry-run / 2xx-mark / fail-closed webhook
+
+`--dry-run` prints the batch JSON and does not POST or flip flags. Non-2xx leaves rows pending (idempotent retry).
+
+The webhook is provider-agnostic. A typical SpaceXAI sidecar reads the JSON and calls `https://api.x.ai/v1` with `XAI_API_KEY`; the wiki never holds the model key.
+
 ## What is *not* implemented yet
 
 | Piece | Notes |
 |-------|--------|
-| Maintenance script `processFeedbackLlm.php` | Would call store + external API |
 | API module for LLM workers | Would need a bot right + token, separate from public submit |
 | Writing LLM output back into MW | Would need new columns or a talk-page bot |
 | Auto-changing `fb_status` | Intentionally left to humans for now |
-| SpaceXAI / provider binding | Choose outside the extension (env + job) |
 
 ## Safe defaults
 
@@ -95,13 +119,10 @@ Do not invent page content; only use the feedback fields provided.
 - Cap batch size (store already limits).  
 - Idempotency via `fb_llm_processed`.
 
-## Natural next implementation slice
+## Next slices
 
-1. `maintenance/ProcessFeedbackLlm.php` that:
-   - loads pending batch,
-   - posts JSON to a configured webhook/URL,
-   - marks processed on HTTP 2xx.
-2. Config: `$wgSaintapediaFeedbackLlmWebhook`, `$wgSaintapediaFeedbackLlmBatchSize`.
-3. Integration test with a mock HTTP endpoint.
+1. Sidecar that consumes the webhook and calls SpaceXAI (`api.x.ai`).
+2. Writing model output back into MW (new columns or a talk-page bot).
+3. Integration test against a live wiki + mock HTTP endpoint.
 
-Until then, editors use **Export as JSON** from the dashboard (or per-page export) and run analysis offline.
+Editors can still **Export as JSON** from the dashboard and run analysis offline.
