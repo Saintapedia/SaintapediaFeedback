@@ -27,7 +27,7 @@
 	"SpecialPages": {
 		"SaintapediaFeedback": {
 			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Special\\SpecialFeedback",
-			"services": [ "SaintapediaFeedback.FeedbackStore" ]
+			"services": [ "SaintapediaFeedback.FeedbackStore", "TitleFactory" ]
 		}
 	},
 	"AvailableRights": [

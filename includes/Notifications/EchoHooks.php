@@ -2,6 +2,7 @@
 
 namespace MediaWiki\Extension\SaintapediaFeedback\Notifications;
 
+use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\User\UserIdentity;
 
 /**
@@ -50,7 +51,7 @@ class EchoHooks {
 		$userFactory = \MediaWiki\MediaWikiServices::getInstance()->getUserFactory();
 		foreach ( $ids as $id ) {
 			$user = $userFactory->newFromId( (int)$id );
-			if ( $user->isRegistered() ) {
+			if ( FeedbackAccess::isPersistentAccount( $user ) ) {
 				$users[] = $user;
 			}
 		}

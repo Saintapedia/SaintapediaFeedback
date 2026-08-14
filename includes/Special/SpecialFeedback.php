@@ -9,6 +9,7 @@ use MediaWiki\Extension\SaintapediaFeedback\FeedbackFilters;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
 use MediaWiki\Extension\SaintapediaFeedback\TalkLinkPoster;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\TitleFactory;
 use PermissionsError;
 use SpecialPage;
 use Title;
@@ -27,15 +28,17 @@ class SpecialFeedback extends SpecialPage {
 	private const PAGE_SIZE = 50;
 
 	private FeedbackStore $store;
+	private TitleFactory $titleFactory;
 
 	/** @var string Subpage from execute() (page id, export/…, resolutions/…) */
 	private string $subpage = '';
 
-	public function __construct( FeedbackStore $store ) {
+	public function __construct( FeedbackStore $store, TitleFactory $titleFactory ) {
 		// Restriction right kept for Special:ListGroupRights / LocalSettings;
 		// actual access is FeedbackAccess (wiki page + defaults + explicit right).
 		parent::__construct( 'SaintapediaFeedback', 'saintapediafeedback-view' );
 		$this->store = $store;
+		$this->titleFactory = $titleFactory;
 	}
 
 	/**
@@ -234,7 +237,7 @@ class SpecialFeedback extends SpecialPage {
 
 	private function showPageFeedback( int $pageId ): void {
 		$out  = $this->getOutput();
-		$title = Title::newFromID( $pageId );
+		$title = $this->titleFromId( $pageId );
 
 		if ( !$title ) {
 			$out->setPageTitle( $this->msg( 'saintapediafeedback-special-title' ) );
@@ -352,9 +355,7 @@ class SpecialFeedback extends SpecialPage {
 			&& $request->getCheck( 'spftalk' )
 			&& MediaWikiServices::getInstance()->getMainConfig()->get( 'SaintapediaFeedbackEnableTalkLink' )
 		) {
-			$article = $pageId > 0
-				? Title::newFromID( $pageId )
-				: null;
+			$article = $this->titleFromId( $pageId );
 			if ( !$article ) {
 				$article = $this->resolveArticleForFeedback( $fbId );
 			}
@@ -393,7 +394,7 @@ class SpecialFeedback extends SpecialPage {
 				[ 'fb_id' => $fbId ],
 				__METHOD__
 			);
-			return $pageId ? Title::newFromID( $pageId ) : null;
+			return $this->titleFromId( $pageId );
 		} catch ( \Throwable $e ) {
 			return null;
 		}
@@ -515,7 +516,7 @@ class SpecialFeedback extends SpecialPage {
 			return;
 		}
 
-		$title = Title::newFromID( $pageId );
+		$title = $this->titleFromId( $pageId );
 		if ( !$title ) {
 			$out->setPageTitle( $this->msg( 'saintapediafeedback-resolutions-title' ) );
 			$out->addWikiMsg( 'saintapediafeedback-special-notfound' );
@@ -614,7 +615,7 @@ class SpecialFeedback extends SpecialPage {
 				$pageId = null;
 			}
 		} elseif ( $pageId ) {
-			$title = Title::newFromID( $pageId );
+			$title = $this->titleFromId( $pageId );
 			if ( $title ) {
 				$pageLabel = $title->getPrefixedText();
 				$pagename = $pageLabel;
@@ -980,7 +981,7 @@ class SpecialFeedback extends SpecialPage {
 		}
 
 		if ( $showPage ) {
-			$pageTitle = Title::newFromID( (int)$row->fb_page_id );
+			$pageTitle = $this->titleFromId( (int)$row->fb_page_id );
 			$pageLabel = $pageTitle
 				? $pageTitle->getPrefixedText()
 				: str_replace( '_', ' ', $row->fb_page_title );
@@ -1096,6 +1097,11 @@ class SpecialFeedback extends SpecialPage {
 
 		$out->addHTML( '</div>' );
 		$out->addHTML( '</div>' );
+	}
+
+	/** @return Title|null */
+	private function titleFromId( int $pageId ) {
+		return $pageId > 0 ? $this->titleFactory->newFromID( $pageId ) : null;
 	}
 
 	protected function getGroupName(): string {

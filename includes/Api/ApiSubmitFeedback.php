@@ -4,6 +4,7 @@ namespace MediaWiki\Extension\SaintapediaFeedback\Api;
 
 use ApiBase;
 use MediaWiki\Extension\SaintapediaFeedback\CaptchaGate;
+use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
 use MediaWiki\MediaWikiServices;
@@ -110,7 +111,7 @@ class ApiSubmitFeedback extends ApiBase {
 			'pageId'       => $title->getArticleID(),
 			'namespace'    => $title->getNamespace(),
 			'title'        => $title->getDBkey(),
-			'userId'       => $user->isRegistered() && !$user->isTemp() ? $user->getId() : null,
+			'userId'       => FeedbackAccess::isPersistentAccount( $user ) ? $user->getId() : null,
 			'ipHash'       => $ipHash,
 			'categories'   => $categories,
 			'comment'      => $comment,

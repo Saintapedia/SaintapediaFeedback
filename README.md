@@ -220,7 +220,7 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 
 ## Version
 
-**1.5.1** — treat MW temp accounts as anonymous; inject `TitleFactory` (drops deprecated `Title::newFromID`).
+**1.5.1** — treat MW temp accounts as anonymous on submit **and** dashboard access; inject `TitleFactory` (drops deprecated `Title::newFromID`).
 
 **1.5.0** — `ProcessFeedbackLlm.php` maintenance script + SpaceXAI sidecar for the LLM pull job.
 
