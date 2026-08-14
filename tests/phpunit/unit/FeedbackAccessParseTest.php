@@ -45,4 +45,36 @@ TEXT;
 	public function testDefaultGroupsIsUser(): void {
 		$this->assertSame( [ 'user' ], FeedbackAccess::DEFAULT_GROUPS );
 	}
+
+	public function testPersistentAccountExcludesTempAndAnon(): void {
+		$this->assertFalse( FeedbackAccess::isPersistentAccount( new FakeIdentityUser( false, false ) ) );
+		$this->assertFalse( FeedbackAccess::isPersistentAccount( new FakeIdentityUser( true, true ) ) );
+		$this->assertTrue( FeedbackAccess::isPersistentAccount( new FakeIdentityUser( true, false ) ) );
+		$this->assertTrue( FeedbackAccess::isPersistentAccount( new FakeNamedUserNoTempMethod() ) );
+	}
+}
+
+class FakeIdentityUser {
+	private bool $registered;
+	private bool $temp;
+
+	public function __construct( bool $registered, bool $temp ) {
+		$this->registered = $registered;
+		$this->temp = $temp;
+	}
+
+	public function isRegistered(): bool {
+		return $this->registered;
+	}
+
+	public function isTemp(): bool {
+		return $this->temp;
+	}
+}
+
+/** Pre-1.42 User with no isTemp() — treat as a named account if registered. */
+class FakeNamedUserNoTempMethod {
+	public function isRegistered(): bool {
+		return true;
+	}
 }

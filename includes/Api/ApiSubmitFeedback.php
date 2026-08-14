@@ -4,18 +4,22 @@ namespace MediaWiki\Extension\SaintapediaFeedback\Api;
 
 use ApiBase;
 use MediaWiki\Extension\SaintapediaFeedback\CaptchaGate;
+use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\TitleFactory;
 use Wikimedia\ParamValidator\ParamValidator;
 
 class ApiSubmitFeedback extends ApiBase {
 
 	private FeedbackStore $store;
+	private TitleFactory $titleFactory;
 
-	public function __construct( $main, $moduleName, FeedbackStore $store ) {
+	public function __construct( $main, $moduleName, FeedbackStore $store, TitleFactory $titleFactory ) {
 		parent::__construct( $main, $moduleName );
 		$this->store = $store;
+		$this->titleFactory = $titleFactory;
 	}
 
 	public function execute(): void {
@@ -33,7 +37,7 @@ class ApiSubmitFeedback extends ApiBase {
 
 		// Cheap validation first so invalid requests do not burn a one-time hCaptcha token
 		// or an outbound siteverify round-trip (review: VeritasDei).
-		$title = \Title::newFromID( $params['pageid'] );
+		$title = $this->titleFactory->newFromID( $params['pageid'] );
 		if ( !$title || !$title->exists() ) {
 			$this->dieWithError( 'apierror-invalidtitle' );
 		}
@@ -107,7 +111,7 @@ class ApiSubmitFeedback extends ApiBase {
 			'pageId'       => $title->getArticleID(),
 			'namespace'    => $title->getNamespace(),
 			'title'        => $title->getDBkey(),
-			'userId'       => $user->isRegistered() ? $user->getId() : null,
+			'userId'       => FeedbackAccess::isPersistentAccount( $user ) ? $user->getId() : null,
 			'ipHash'       => $ipHash,
 			'categories'   => $categories,
 			'comment'      => $comment,

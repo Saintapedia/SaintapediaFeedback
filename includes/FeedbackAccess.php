@@ -14,7 +14,7 @@ use MediaWiki\User\UserIdentity;
  * MediaWiki:SaintapediaFeedback-access). One group name per line.
  *
  * Special tokens:
- * - user — any registered account (option C: all logged-in users) [default]
+ * - user — any persistent registered account (not temp / IP) [default]
  * - *    — everyone including anons (rarely appropriate)
  * - autoconfirmed, sysop, editor, … — normal MediaWiki groups
  *
@@ -28,6 +28,25 @@ class FeedbackAccess {
 	public const DEFAULT_GROUPS = [ 'user' ];
 
 	public const CACHE_KEY = 'saintapediafeedback-access-groups';
+
+	/**
+	 * Named account with a durable identity (not anon, not a MW temp account).
+	 *
+	 * Temp users are isRegistered() === true on MW 1.39+; they must not get
+	 * the "user" dashboard token or a stored fb_user_id. isTemp() is absent
+	 * on some 1.39 builds — those users are treated as named if registered.
+	 *
+	 * @param object $user User / UserIdentity / test double
+	 */
+	public static function isPersistentAccount( $user ): bool {
+		if ( !is_object( $user ) || !method_exists( $user, 'isRegistered' ) || !$user->isRegistered() ) {
+			return false;
+		}
+		if ( method_exists( $user, 'isTemp' ) && $user->isTemp() ) {
+			return false;
+		}
+		return true;
+	}
 
 	/**
 	 * Whether this user may open the dashboard / toolbox / export.
@@ -58,8 +77,8 @@ class FeedbackAccess {
 			return true;
 		}
 
-		// Option C: any registered account
-		if ( in_array( 'user', $groups, true ) && $userObj->isRegistered() ) {
+		// Option C: any persistent registered account (temps are not "user")
+		if ( in_array( 'user', $groups, true ) && self::isPersistentAccount( $userObj ) ) {
 			return true;
 		}
 

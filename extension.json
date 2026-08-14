@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.5.0",
+	"version": "1.5.1",
 	"author": [ "Saintapedia contributors" ],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
@@ -21,13 +21,13 @@
 	"APIModules": {
 		"saintapediafeedback": {
 			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Api\\ApiSubmitFeedback",
-			"services": [ "SaintapediaFeedback.FeedbackStore" ]
+			"services": [ "SaintapediaFeedback.FeedbackStore", "TitleFactory" ]
 		}
 	},
 	"SpecialPages": {
 		"SaintapediaFeedback": {
 			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Special\\SpecialFeedback",
-			"services": [ "SaintapediaFeedback.FeedbackStore" ]
+			"services": [ "SaintapediaFeedback.FeedbackStore", "TitleFactory" ]
 		}
 	},
 	"AvailableRights": [

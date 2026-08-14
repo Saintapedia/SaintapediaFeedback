@@ -61,7 +61,7 @@ class FeedbackNotifier {
 					continue;
 				}
 				$user = $userFactory->newFromName( $name );
-				if ( $user && $user->isRegistered() && FeedbackAccess::userCanManage( $user ) ) {
+				if ( $user && FeedbackAccess::isPersistentAccount( $user ) && FeedbackAccess::userCanManage( $user ) ) {
 					$ids[] = $user->getId();
 				}
 			}
@@ -73,7 +73,7 @@ class FeedbackNotifier {
 			$userFactory = MediaWikiServices::getInstance()->getUserFactory();
 			foreach ( self::getWatcherUserIds( $title ) as $wid ) {
 				$user = $userFactory->newFromId( (int)$wid );
-				if ( $user->isRegistered() && FeedbackAccess::userCanManage( $user ) ) {
+				if ( FeedbackAccess::isPersistentAccount( $user ) && FeedbackAccess::userCanManage( $user ) ) {
 					$ids[] = (int)$wid;
 				}
 			}
@@ -81,7 +81,7 @@ class FeedbackNotifier {
 
 		// De-dupe; never notify the submitter if they are registered
 		$ids = array_values( array_unique( array_map( 'intval', $ids ) ) );
-		if ( $agent->isRegistered() ) {
+		if ( FeedbackAccess::isPersistentAccount( $agent ) ) {
 			$ids = array_values( array_filter(
 				$ids,
 				static function ( $id ) use ( $agent ) {
