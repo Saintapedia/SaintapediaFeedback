@@ -28,6 +28,9 @@ class SpecialFeedback extends SpecialPage {
 
 	private FeedbackStore $store;
 
+	/** @var string Subpage from execute() (page id, export/…, resolutions/…) */
+	private string $subpage = '';
+
 	public function __construct( FeedbackStore $store ) {
 		// Restriction right kept for Special:ListGroupRights / LocalSettings;
 		// actual access is FeedbackAccess (wiki page + defaults + explicit right).
@@ -55,6 +58,10 @@ class SpecialFeedback extends SpecialPage {
 		}
 	}
 
+	public function doesWrites(): bool {
+		return true;
+	}
+
 	public function execute( $par ): void {
 		$this->setHeaders();
 		$out = $this->getOutput();
@@ -63,6 +70,7 @@ class SpecialFeedback extends SpecialPage {
 		$out->addModules( 'ext.saintapediafeedback.special' );
 
 		$par = (string)( $par ?? '' );
+		$this->subpage = $par;
 		$request = $this->getRequest();
 
 		// Public resolutions list — no login (only actioned items marked public)
@@ -79,9 +87,15 @@ class SpecialFeedback extends SpecialPage {
 			return;
 		}
 
+		if ( $request->wasPosted() ) {
+			$this->checkReadOnly();
+		}
+
 		// Status mutations (POST + CSRF) before rendering
-		$this->handleStatusUpdate();
-		$this->handleBulkStatusUpdate();
+		if ( $this->handleStatusUpdate() || $this->handleBulkStatusUpdate() ) {
+			return;
+		}
+		$this->showMutationFlash();
 
 		// Subpage form Special:SaintapediaFeedback/<pageid> → per-article view.
 		// Query ?pageid= is reserved for dashboard filtering (not page view).
@@ -228,11 +242,24 @@ class SpecialFeedback extends SpecialPage {
 			Html::element( 'a', [ 'href' => $title->getLocalURL() ], $title->getPrefixedText() )
 		);
 
-		$rows = $this->store->getForPage( $pageId );
+		$offset = max( 0, $this->getRequest()->getInt( 'offset' ) );
+		$limit = self::PAGE_SIZE;
+		$total = (int)( $this->store->getPageCounts( $pageId )['total'] ?? 0 );
+		$rows = $this->store->getForPage( $pageId, $limit, $offset );
 
-		if ( !$rows ) {
+		if ( !$rows && $total === 0 ) {
 			$out->addWikiMsg( 'saintapediafeedback-special-nofeedback' );
 			return;
+		}
+
+		if ( $total > 0 ) {
+			$out->addHTML(
+				Html::rawElement( 'p', [ 'class' => 'spf-dashboard-meta' ],
+					$this->msg( 'saintapediafeedback-dashboard-showing' )
+						->numParams( $offset + 1, min( $offset + count( $rows ), $total ), $total )
+						->escaped()
+				)
+			);
 		}
 
 		$out->addHTML( '<div class="spf-feedback-list">' );
@@ -240,6 +267,8 @@ class SpecialFeedback extends SpecialPage {
 			$this->renderFeedbackRow( $row, false );
 		}
 		$out->addHTML( '</div>' );
+
+		$out->addHTML( $this->renderPagination( [], $offset, $limit, $total, (string)$pageId ) );
 
 		$exportUrl = $this->getPageTitle( 'export/' . $pageId )->getLocalURL();
 		$out->addHTML( '<p class="spf-export-link">' .
@@ -252,12 +281,14 @@ class SpecialFeedback extends SpecialPage {
 
 	/**
 	 * Process status change only on POST with a valid edit token.
+	 *
+	 * @return bool True when a redirect was issued
 	 */
-	private function handleStatusUpdate(): void {
+	private function handleStatusUpdate(): bool {
 		$request = $this->getRequest();
 		// Bulk form uses spfbulkaction — ignore here
 		if ( $request->getVal( 'spfbulkaction' ) ) {
-			return;
+			return false;
 		}
 		$action = $request->getVal( 'spfaction' );
 		$fbId   = (int)$request->getVal( 'spfid' );
@@ -265,11 +296,11 @@ class SpecialFeedback extends SpecialPage {
 		$validActions = FeedbackFilters::processActions();
 
 		if ( !$action || !$fbId || !in_array( $action, $validActions, true ) ) {
-			return;
+			return false;
 		}
 
 		if ( !$request->wasPosted() ) {
-			return;
+			return false;
 		}
 
 		if ( !$this->getUser()->matchEditToken( $request->getVal( 'wpEditToken' ) ) ) {
@@ -287,11 +318,11 @@ class SpecialFeedback extends SpecialPage {
 		} else {
 			$makePublic = false;
 		}
-		$opts = [
-			'workNote' => $request->getText( 'spfworknote' ),
-			'resolutionPublic' => $makePublic,
-			'resolutionSummary' => $request->getText( 'spfressummary' ),
-		];
+		$opts = FeedbackFilters::statusUpdateOpts(
+			$request->getVal( 'spfworknote' ),
+			$request->getVal( 'spfressummary' ),
+			$makePublic
+		);
 		$updated = $this->store->updateStatus(
 			$fbId,
 			$action,
@@ -301,16 +332,11 @@ class SpecialFeedback extends SpecialPage {
 		);
 
 		if ( !$updated ) {
-			return;
+			return false;
 		}
 
-		$this->getOutput()->addHTML(
-			'<div class="successbox">' .
-			$this->msg( 'saintapediafeedback-status-updated' )->escaped() .
-			'</div>'
-		);
-
 		// Optional Talk note: short link only (never dumps work notes / raw feedback)
+		$talkFlash = null;
 		if (
 			$action === 'actioned'
 			&& $request->getCheck( 'spftalk' )
@@ -331,21 +357,15 @@ class SpecialFeedback extends SpecialPage {
 					$makePublic
 				);
 			}
-			if ( $talkOk ) {
-				$this->getOutput()->addHTML(
-					'<div class="successbox">' .
-					$this->msg( 'saintapediafeedback-talk-posted' )->escaped() .
-					'</div>'
-				);
-			} else {
-				// Status update succeeded; Talk edit is best-effort — use warning, not success
-				$this->getOutput()->addHTML(
-					'<div class="warningbox">' .
-					$this->msg( 'saintapediafeedback-talk-failed' )->escaped() .
-					'</div>'
-				);
-			}
+			$talkFlash = $talkOk ? 'ok' : 'fail';
 		}
+
+		$flash = [ 'spfok' => '1' ];
+		if ( $talkFlash !== null ) {
+			$flash['spftalk'] = $talkFlash;
+		}
+		$this->redirectAfterMutation( $flash );
+		return true;
 	}
 
 	/**
@@ -371,15 +391,17 @@ class SpecialFeedback extends SpecialPage {
 
 	/**
 	 * Bulk status change for selected dashboard rows (POST + CSRF).
+	 *
+	 * @return bool True when a redirect was issued
 	 */
-	private function handleBulkStatusUpdate(): void {
+	private function handleBulkStatusUpdate(): bool {
 		$request = $this->getRequest();
 		$action = $request->getVal( 'spfbulkaction' );
 		if ( !$action || !$request->wasPosted() ) {
-			return;
+			return false;
 		}
 		if ( !in_array( $action, FeedbackFilters::processActions(), true ) ) {
-			return;
+			return false;
 		}
 		if ( !$this->getUser()->matchEditToken( $request->getVal( 'wpEditToken' ) ) ) {
 			throw new ErrorPageError( 'sessionfailure-title', 'sessionfailure' );
@@ -405,11 +427,66 @@ class SpecialFeedback extends SpecialPage {
 			$workNote !== '' ? $workNote : null,
 			$resolutionPublic
 		);
-		$this->getOutput()->addHTML(
-			'<div class="successbox">' .
-			$this->msg( 'saintapediafeedback-bulk-updated' )->numParams( $n )->escaped() .
-			'</div>'
-		);
+		$this->redirectAfterMutation( [
+			'spfok' => '1',
+			'spfn' => (string)$n,
+		] );
+		return true;
+	}
+
+	/**
+	 * PRG: after a successful POST, redirect so refresh does not re-submit.
+	 */
+	private function redirectAfterMutation( array $flash ): void {
+		if ( $this->subpage !== '' && ctype_digit( $this->subpage ) ) {
+			$query = $flash;
+			$offset = $this->getRequest()->getInt( 'offset' );
+			if ( $offset > 0 ) {
+				$query['offset'] = $offset;
+			}
+			$url = $this->getPageTitle( $this->subpage )->getLocalURL( $query );
+		} else {
+			$url = $this->getPageTitle()->getLocalURL( array_merge(
+				$this->filtersToQuery( $this->getFiltersFromRequest() ),
+				$flash
+			) );
+		}
+		$this->getOutput()->redirect( $url );
+	}
+
+	/** Show success/Talk banners after a PRG redirect (query flags only). */
+	private function showMutationFlash(): void {
+		$request = $this->getRequest();
+		if ( $request->getCheck( 'spfok' ) ) {
+			if ( $request->getVal( 'spfn' ) !== null ) {
+				$this->getOutput()->addHTML(
+					'<div class="successbox">' .
+					$this->msg( 'saintapediafeedback-bulk-updated' )
+						->numParams( $request->getInt( 'spfn' ) )->escaped() .
+					'</div>'
+				);
+			} else {
+				$this->getOutput()->addHTML(
+					'<div class="successbox">' .
+					$this->msg( 'saintapediafeedback-status-updated' )->escaped() .
+					'</div>'
+				);
+			}
+		}
+		$talk = $request->getVal( 'spftalk' );
+		if ( $talk === 'ok' ) {
+			$this->getOutput()->addHTML(
+				'<div class="successbox">' .
+				$this->msg( 'saintapediafeedback-talk-posted' )->escaped() .
+				'</div>'
+			);
+		} elseif ( $talk === 'fail' ) {
+			$this->getOutput()->addHTML(
+				'<div class="warningbox">' .
+				$this->msg( 'saintapediafeedback-talk-failed' )->escaped() .
+				'</div>'
+			);
+		}
 	}
 
 	/**
@@ -604,6 +681,8 @@ class SpecialFeedback extends SpecialPage {
 			'rows' => 2,
 			'placeholder' => $this->msg( 'saintapediafeedback-work-note-placeholder' )->text(),
 		] );
+		$html .= Html::rawElement( 'p', [ 'class' => 'spf-action-hint' ],
+			$this->msg( 'saintapediafeedback-work-note-visibility' )->escaped() );
 		// Same control as single-item actioned form: default on, uncheck to keep private.
 		// Shown only when bulk action is "actioned" (see special.js); server ignores otherwise.
 		$html .= Html::hidden( 'spfpublic_present', '1' );
@@ -790,7 +869,17 @@ class SpecialFeedback extends SpecialPage {
 		return $html;
 	}
 
-	private function renderPagination( array $filters, int $offset, int $limit, int $total ): string {
+	/**
+	 * @param array $filters Dashboard filters (ignored when $subpage is a page id)
+	 * @param string|null $subpage Per-article view page id, or null for dashboard
+	 */
+	private function renderPagination(
+		array $filters,
+		int $offset,
+		int $limit,
+		int $total,
+		?string $subpage = null
+	): string {
 		if ( $total <= $limit ) {
 			return '';
 		}
@@ -798,20 +887,21 @@ class SpecialFeedback extends SpecialPage {
 			'class'      => 'spf-pagination',
 			'aria-label' => $this->msg( 'saintapediafeedback-pagination' )->text(),
 		] );
+		$title = $subpage !== null ? $this->getPageTitle( $subpage ) : $this->getPageTitle();
 		if ( $offset > 0 ) {
 			$prev = max( 0, $offset - $limit );
-			$url = $this->getPageTitle()->getLocalURL(
-				$this->filtersToQuery( $filters, [ 'offset' => $prev ] )
-			);
-			$html .= Html::element( 'a', [ 'href' => $url, 'class' => 'spf-page-prev' ],
+			$query = $subpage !== null
+				? [ 'offset' => $prev ]
+				: $this->filtersToQuery( $filters, [ 'offset' => $prev ] );
+			$html .= Html::element( 'a', [ 'href' => $title->getLocalURL( $query ), 'class' => 'spf-page-prev' ],
 				$this->msg( 'saintapediafeedback-pagination-prev' )->text() );
 		}
 		if ( $offset + $limit < $total ) {
 			$next = $offset + $limit;
-			$url = $this->getPageTitle()->getLocalURL(
-				$this->filtersToQuery( $filters, [ 'offset' => $next ] )
-			);
-			$html .= Html::element( 'a', [ 'href' => $url, 'class' => 'spf-page-next' ],
+			$query = $subpage !== null
+				? [ 'offset' => $next ]
+				: $this->filtersToQuery( $filters, [ 'offset' => $next ] );
+			$html .= Html::element( 'a', [ 'href' => $title->getLocalURL( $query ), 'class' => 'spf-page-next' ],
 				$this->msg( 'saintapediafeedback-pagination-next' )->text() );
 		}
 		$html .= Html::closeElement( 'nav' );
@@ -906,7 +996,7 @@ class SpecialFeedback extends SpecialPage {
 				. nl2br( htmlspecialchars( $row->fb_comment ) ) . '</div>' );
 		}
 
-		// Private work note (managers only — not on Talk)
+		// Work note (managers only — not on Talk; visible to anyone who can open this dashboard)
 		if ( !empty( $row->fb_work_note ) ) {
 			$out->addHTML( '<div class="spf-work-note-display">'
 				. '<strong>' . $this->msg( 'saintapediafeedback-work-note' )->escaped() . ':</strong> '
@@ -948,6 +1038,8 @@ class SpecialFeedback extends SpecialPage {
 					'rows' => 2,
 					'placeholder' => $this->msg( 'saintapediafeedback-work-note-placeholder' )->text(),
 				] );
+				$html .= Html::rawElement( 'p', [ 'class' => 'spf-action-hint' ],
+					$this->msg( 'saintapediafeedback-work-note-visibility' )->escaped() );
 				// Default checked: actioned → public resolutions list
 				$html .= Html::hidden( 'spfpublic_present', '1' );
 				$html .= Html::rawElement( 'label', [ 'class' => 'spf-public-check' ],

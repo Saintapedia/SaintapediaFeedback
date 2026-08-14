@@ -53,4 +53,23 @@ class FeedbackFiltersTest extends TestCase {
 			FeedbackFilters::processActions()
 		);
 	}
+
+	public function testStatusUpdateOptsOmitsEmptyWorkNote(): void {
+		$opts = FeedbackFilters::statusUpdateOpts( '', 'Fixed it', true );
+		$this->assertArrayNotHasKey( 'workNote', $opts );
+		$this->assertTrue( $opts['resolutionPublic'] );
+		$this->assertSame( 'Fixed it', $opts['resolutionSummary'] );
+	}
+
+	public function testStatusUpdateOptsOmitsMissingWorkNote(): void {
+		$opts = FeedbackFilters::statusUpdateOpts( null, null, false );
+		$this->assertArrayNotHasKey( 'workNote', $opts );
+		$this->assertFalse( $opts['resolutionPublic'] );
+		$this->assertSame( '', $opts['resolutionSummary'] );
+	}
+
+	public function testStatusUpdateOptsIncludesNonEmptyWorkNote(): void {
+		$opts = FeedbackFilters::statusUpdateOpts( "  updated sources  ", '', true );
+		$this->assertSame( '  updated sources  ', $opts['workNote'] );
+	}
 }

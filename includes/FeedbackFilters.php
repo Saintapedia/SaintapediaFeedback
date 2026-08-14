@@ -75,4 +75,29 @@ class FeedbackFilters {
 	public static function processActions(): array {
 		return [ 'reviewed', 'actioned', 'dismissed' ];
 	}
+
+	/**
+	 * Build FeedbackStore::updateStatus $opts from a single-item status POST.
+	 *
+	 * workNote is included only when the field was submitted and non-empty, so
+	 * reviewed/dismissed forms (no textarea) do not NULL an existing note.
+	 *
+	 * @param string|null $workNote Raw POST value, or null if the field was absent
+	 * @param string|null $resolutionSummary
+	 * @return array{resolutionPublic:bool,resolutionSummary:string,workNote?:string}
+	 */
+	public static function statusUpdateOpts(
+		?string $workNote,
+		?string $resolutionSummary,
+		bool $makePublic
+	): array {
+		$opts = [
+			'resolutionPublic' => $makePublic,
+			'resolutionSummary' => $resolutionSummary ?? '',
+		];
+		if ( $workNote !== null && trim( $workNote ) !== '' ) {
+			$opts['workNote'] = $workNote;
+		}
+		return $opts;
+	}
 }

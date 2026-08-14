@@ -164,9 +164,14 @@ class FeedbackAccess {
 			if ( $line === '' || $line[0] === '#' || $line[0] === ';' ) {
 				continue;
 			}
-			// Allow "* user" wiki-list markup
+			// Allow "* user" wiki-list markup. A line that is only "*" (the
+			// documented everyone-including-anons token) must survive the strip.
+			$raw = $line;
 			$line = preg_replace( '/^\*+\s*/', '', $line );
 			$line = trim( $line );
+			if ( $line === '' && preg_match( '/^\*+$/', $raw ) ) {
+				$line = '*';
+			}
 			if ( strpos( $line, '#' ) !== false ) {
 				$line = trim( substr( $line, 0, strpos( $line, '#' ) ) );
 			}

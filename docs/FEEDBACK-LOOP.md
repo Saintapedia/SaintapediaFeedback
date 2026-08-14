@@ -23,7 +23,7 @@ Product direction for SaintapediaFeedback: help **enterprise editors** improve p
 | Layer | Where | Who sees it |
 |-------|--------|-------------|
 | Reader feedback | Dashboard only | Managers |
-| **Work note** (private) | Dashboard when processing | Managers only |
+| **Work note** (private) | Dashboard when processing | Anyone who can open the dashboard (default: all logged-in users). Not on Talk. |
 | **Public resolution** | `Special:SaintapediaFeedback/resolutions/<pageid>` | Anyone |
 | **Talk (optional)** | Checkbox on actioned → short section + link | Talk watchers |
 
