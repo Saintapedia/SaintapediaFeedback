@@ -42,7 +42,7 @@ class SpecialFeedback extends SpecialPage {
 	}
 
 	/**
-	 * Allow access via MediaWiki:SaintapediaFeedback-access groups (default: all logged-in),
+	 * Allow access via MediaWiki:SaintapediaFeedback-access groups (default: named accounts, not temp),
 	 * or the saintapediafeedback-view right.
 	 *
 	 * @param User $user
@@ -321,7 +321,9 @@ class SpecialFeedback extends SpecialPage {
 		}
 
 		// Prefer scoped update when page id is known
-		$actorId = $this->getUser()->isRegistered() ? $this->getUser()->getId() : null;
+		$actorId = FeedbackAccess::isPersistentAccount( $this->getUser() )
+			? $this->getUser()->getId()
+			: null;
 		// Actioned → public by default. Checkbox is checked by default; spfpublic_present
 		// means the form included the control (unchecked = not in POST).
 		if ( $action === 'actioned' ) {
@@ -422,7 +424,9 @@ class SpecialFeedback extends SpecialPage {
 		if ( !is_array( $ids ) ) {
 			$ids = [];
 		}
-		$actorId = $this->getUser()->isRegistered() ? $this->getUser()->getId() : null;
+		$actorId = FeedbackAccess::isPersistentAccount( $this->getUser() )
+			? $this->getUser()->getId()
+			: null;
 		$workNote = $request->getText( 'spfworknote' );
 		// Same as single-item: actioned → public by default; checkbox opt-out when present
 		$resolutionPublic = null;

@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.5.1",
+	"version": "1.5.2",
 	"author": [ "Saintapedia contributors" ],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
@@ -130,7 +130,7 @@
 		},
 		"SaintapediaFeedbackAccessGroups": {
 			"value": [ "user" ],
-			"description": "Default groups when the access page is missing or empty. 'user' = all logged-in accounts (option C). Override via the MediaWiki access page."
+			"description": "Default groups when the access page is missing or empty. 'user' = named accounts, not MW temp accounts (option C). Override via the MediaWiki access page."
 		},
 		"SaintapediaFeedbackNotifyWatchers": {
 			"value": true,
