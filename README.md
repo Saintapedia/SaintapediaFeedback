@@ -197,7 +197,13 @@ php maintenance/run.php extensions/SaintapediaFeedback/maintenance/ProcessFeedba
 # canasta maintenance exec -i <instance> -- php maintenance/run.php extensions/SaintapediaFeedback/maintenance/ProcessFeedbackLlm.php
 ```
 
-Point the webhook at your own worker (SpaceXAI / `api.x.ai` sidecar, or anything that accepts the JSON).
+This repo includes a SpaceXAI worker in [`sidecar/`](sidecar/README.md):
+
+```bash
+export XAI_API_KEY=...
+export SAINTAPEDIA_LLM_WEBHOOK_TOKEN=...   # match LocalSettings
+python3 sidecar/server.py                  # http://127.0.0.1:8787/hooks/feedback
+```
 
 ## Completing the loop
 
@@ -214,7 +220,7 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 
 ## Version
 
-**1.5.0** — `ProcessFeedbackLlm.php` maintenance script + webhook config for the LLM pull job.
+**1.5.0** — `ProcessFeedbackLlm.php` maintenance script + SpaceXAI sidecar for the LLM pull job.
 
 **1.4.2** — preserve work notes on status change; primary-DB rate limit; paginate per-article view; lone `*` access token; omit PII from list queries; IP-hash index; read-only / PRG hardening.
 
