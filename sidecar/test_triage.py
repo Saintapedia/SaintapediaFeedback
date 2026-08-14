@@ -140,9 +140,39 @@ class ParseTriageTests(unittest.TestCase):
         rows = triage.parse_triage_text(text)
         self.assertEqual(rows[0]["id"], 3)
 
+    def test_fenced_json_with_nested_array(self):
+        inner = '[{"id": 1, "priority": "high", "summary": "x", "suggested_action": "edit", "categories": ["outdated"]}]'
+        rows = triage.parse_triage_text("```json\n" + inner + "\n```")
+        self.assertEqual(rows[0]["id"], 1)
+        self.assertEqual(rows[0]["categories"], ["outdated"])
+
     def test_invalid_text_raises(self):
         with self.assertRaises(triage.ModelError):
             triage.parse_triage_text("not json")
+
+    def test_row_must_be_complete_dict(self):
+        with self.assertRaises(triage.ModelError):
+            triage.parse_triage_text("[null]")
+        with self.assertRaises(triage.ModelError):
+            triage.parse_triage_text("[1, 2]")
+        with self.assertRaises(triage.ModelError):
+            triage.parse_triage_text('[{"id": 1}]')
+
+
+class FilenameTests(unittest.TestCase):
+    def test_out_names_do_not_collide(self):
+        a = triage.out_filename(3)
+        b = triage.out_filename(3)
+        self.assertNotEqual(a, b)
+
+
+class AuthTests(unittest.TestCase):
+    def test_bearer_compare(self):
+        import server
+
+        self.assertTrue(server.bearer_ok("Bearer secret", "secret"))
+        self.assertFalse(server.bearer_ok("Bearer other", "secret"))
+        self.assertFalse(server.bearer_ok("", "secret"))
 
 
 if __name__ == "__main__":

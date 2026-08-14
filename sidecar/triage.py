@@ -28,6 +28,11 @@ class ModelError(Exception):
     pass
 
 
+def out_filename(count: int) -> str:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+    return f"{stamp}-{count}-{os.urandom(4).hex()}.json"
+
+
 def sanitize_batch(raw: Any) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raw = {}
@@ -43,9 +48,12 @@ def sanitize_batch(raw: Any) -> dict[str, Any]:
     return {"count": len(clean), "items": clean}
 
 
+REQUIRED_ROW_KEYS = {"id", "priority", "summary", "suggested_action"}
+
+
 def parse_triage_text(text: str) -> list[dict[str, Any]]:
     text = (text or "").strip()
-    fence = re.search(r"```(?:json)?\s*(\[.*?\])\s*```", text, re.S)
+    fence = re.search(r"```(?:json)?\s*(.*?)\s*```", text, re.S)
     if fence:
         text = fence.group(1)
     try:
@@ -54,6 +62,8 @@ def parse_triage_text(text: str) -> list[dict[str, Any]]:
         raise ModelError(f"model output is not JSON: {e}") from e
     if not isinstance(data, list):
         raise ModelError("model output must be a JSON array")
+    if not all(isinstance(r, dict) and REQUIRED_ROW_KEYS <= r.keys() for r in data):
+        raise ModelError("model output rows missing required keys")
     return data
 
 
@@ -128,8 +138,7 @@ def handle_batch(raw: Any, client: XaiClient | None, out_dir: Path) -> dict[str,
         return {"status": 502, "count": batch["count"], "triage": [], "error": str(e)}
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    path = out_dir / f"{stamp}-{batch['count']}.json"
+    path = out_dir / out_filename(batch["count"])
     record = {
         "received": batch,
         "triage": triage_rows,

@@ -10,6 +10,7 @@ fb_llm_processed. Missing XAI_API_KEY or model errors are 5xx so rows stay pendi
 
 from __future__ import annotations
 
+import hmac
 import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -24,6 +25,10 @@ OUT_DIR = Path(os.environ.get("TRIAGE_OUT", Path(__file__).resolve().parent / "o
 
 def _expected_token() -> str:
     return os.environ.get("SAINTAPEDIA_LLM_WEBHOOK_TOKEN", "").strip()
+
+
+def bearer_ok(got: str, expected: str) -> bool:
+    return hmac.compare_digest(got, f"Bearer {expected}")
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -51,7 +56,7 @@ class Handler(BaseHTTPRequestHandler):
         expected = _expected_token()
         if expected:
             got = self.headers.get("Authorization", "")
-            if got != f"Bearer {expected}":
+            if not bearer_ok(got, expected):
                 self._send(401, {"error": "unauthorized"})
                 return
         length = int(self.headers.get("Content-Length", "0") or 0)
