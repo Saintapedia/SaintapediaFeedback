@@ -1,2 +1,8 @@
 phpunit.phar
 /vendor/
+sidecar/.env
+sidecar/out/
+sidecar/__pycache__/
+__pycache__/
+*.pyc
+

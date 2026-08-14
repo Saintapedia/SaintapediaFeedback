@@ -102,7 +102,7 @@ PHP surface (unit-tested, no MW required):
 
 `--dry-run` prints the batch JSON and does not POST or flip flags. Non-2xx leaves rows pending (idempotent retry).
 
-The webhook is provider-agnostic. A typical SpaceXAI sidecar reads the JSON and calls `https://api.x.ai/v1` with `XAI_API_KEY`; the wiki never holds the model key.
+The webhook is provider-agnostic. This repo ships a SpaceXAI sidecar in [`sidecar/`](../sidecar/README.md): it reads the JSON, calls `https://api.x.ai/v1/responses` with `XAI_API_KEY` (model `grok-4.6` by default, `store: false`), writes suggestions under `sidecar/out/`, and never changes `fb_status`. The wiki never holds the model key.
 
 ## What is *not* implemented yet
 
@@ -121,8 +121,8 @@ The webhook is provider-agnostic. A typical SpaceXAI sidecar reads the JSON and 
 
 ## Next slices
 
-1. Sidecar that consumes the webhook and calls SpaceXAI (`api.x.ai`).
-2. Writing model output back into MW (new columns or a talk-page bot).
+1. Writing model output back into MW (new columns or a talk-page bot) — still editor-owned status.
+2. Wire the sidecar into Canasta compose so the webhook hostname works from `dev-web`.
 3. Integration test against a live wiki + mock HTTP endpoint.
 
 Editors can still **Export as JSON** from the dashboard and run analysis offline.
