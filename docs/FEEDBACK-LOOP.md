@@ -67,7 +67,7 @@ SME raises **signal**, not wiki admin rights. Portal example: `https://openusapr
 
 ## LLM / Grok Build
 
-See [LLM.md](LLM.md). Worker pulls pending batch → proposes/applies edits under a bot → audit actor = bot → mark processed.
+See [LLM.md](LLM.md). `ProcessFeedbackLlm.php` pulls a pending batch, POSTs to `$wgSaintapediaFeedbackLlmWebhook`, and marks processed on HTTP 2xx. The worker (not MediaWiki) talks to the model. `fb_status` stays editor-controlled.
 
 ## Config cheat sheet
 

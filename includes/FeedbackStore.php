@@ -3,9 +3,10 @@
 namespace MediaWiki\Extension\SaintapediaFeedback;
 
 use MediaWiki\Config\Config;
+use MediaWiki\Extension\SaintapediaFeedback\Llm\FeedbackLlmBatchSource;
 use Wikimedia\Rdbms\ILoadBalancer;
 
-class FeedbackStore {
+class FeedbackStore implements FeedbackLlmBatchSource {
 
 	/**
 	 * Columns loaded for dashboard / per-page manager lists.

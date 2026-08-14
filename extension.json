@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.4.2",
+	"version": "1.5.0",
 	"author": [ "Saintapedia contributors" ],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
@@ -143,6 +143,18 @@
 		"SaintapediaFeedbackEnableTalkLink": {
 			"value": true,
 			"description": "When true, show an optional checkbox on actioned to append a short Talk-page note linking to public resolutions (never dumps work notes or raw reader comments)."
+		},
+		"SaintapediaFeedbackLlmWebhook": {
+			"value": "",
+			"description": "HTTPS URL that receives POST JSON {count,items} of pending feedback. Empty disables the maintenance script unless --webhook is passed."
+		},
+		"SaintapediaFeedbackLlmWebhookToken": {
+			"value": "",
+			"description": "Optional Bearer token sent as Authorization when posting the LLM batch. Keep in LocalSettings / env, not in the wiki."
+		},
+		"SaintapediaFeedbackLlmBatchSize": {
+			"value": 100,
+			"description": "Default number of pending feedback rows posted per ProcessFeedbackLlm.php run (max 500)."
 		}
 	},
 	"manifest_version": 2
