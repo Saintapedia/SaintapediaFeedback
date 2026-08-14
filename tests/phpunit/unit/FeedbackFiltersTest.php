@@ -85,4 +85,18 @@ class FeedbackFiltersTest extends TestCase {
 			FeedbackFilters::withOffset( [ 'status' => 'new' ], 50 )
 		);
 	}
+
+	public function testClampOffsetPastEndGoesToLastPage(): void {
+		$this->assertSame( 0, FeedbackFilters::clampOffset( 100, 50, 50 ) );
+		$this->assertSame( 50, FeedbackFilters::clampOffset( 100, 75, 50 ) );
+		// offset == total is already past the last row (0-based)
+		$this->assertSame( 0, FeedbackFilters::clampOffset( 50, 50, 50 ) );
+	}
+
+	public function testClampOffsetInRangeUnchanged(): void {
+		$this->assertSame( 0, FeedbackFilters::clampOffset( 0, 50, 50 ) );
+		$this->assertSame( 50, FeedbackFilters::clampOffset( 50, 75, 50 ) );
+		$this->assertSame( 0, FeedbackFilters::clampOffset( 0, 0, 50 ) );
+		$this->assertSame( 0, FeedbackFilters::clampOffset( -5, 50, 50 ) );
+	}
 }

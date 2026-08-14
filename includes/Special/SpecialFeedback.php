@@ -244,12 +244,16 @@ class SpecialFeedback extends SpecialPage {
 			Html::element( 'a', [ 'href' => $title->getLocalURL() ], $title->getPrefixedText() )
 		);
 
-		$offset = max( 0, $this->getRequest()->getInt( 'offset' ) );
 		$limit = self::PAGE_SIZE;
 		$total = (int)( $this->store->getPageCounts( $pageId )['total'] ?? 0 );
+		$offset = FeedbackFilters::clampOffset(
+			$this->getRequest()->getInt( 'offset' ),
+			$total,
+			$limit
+		);
 		$rows = $this->store->getForPage( $pageId, $limit, $offset );
 
-		if ( !$rows && $total === 0 ) {
+		if ( !$rows ) {
 			$out->addWikiMsg( 'saintapediafeedback-special-nofeedback' );
 			return;
 		}

@@ -129,7 +129,7 @@ user
 | `editor` | Your wiki’s editor group (if you have one) |
 | `*` | Everyone including anons (not recommended). A line that is only `*` works; `* *` is the wiki-list form. |
 
-Blank lines and `#` comments are ignored. Cache invalidates on **save, delete, or move** of the access page.
+Blank lines and `#` or `;` comments are ignored. Cache invalidates on **save, delete, or move** of the access page.
 
 ### Blocks
 

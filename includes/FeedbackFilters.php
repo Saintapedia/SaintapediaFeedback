@@ -113,4 +113,20 @@ class FeedbackFilters {
 		}
 		return $query;
 	}
+
+	/**
+	 * Snap a pager offset onto a valid page (0 when empty).
+	 *
+	 * Used so ?offset=100 on a 50-row list cannot render "Showing 101–50 of 50".
+	 */
+	public static function clampOffset( int $offset, int $total, int $limit ): int {
+		if ( $limit < 1 || $total <= 0 ) {
+			return 0;
+		}
+		$offset = max( 0, $offset );
+		if ( $offset < $total ) {
+			return $offset;
+		}
+		return (int)( floor( ( $total - 1 ) / $limit ) * $limit );
+	}
 }
