@@ -26,6 +26,17 @@ TEXT;
 		$this->assertSame( [ 'user', 'editor' ], FeedbackAccess::parseGroupList( $text ) );
 	}
 
+	public function testParseLoneStarIsEveryoneToken(): void {
+		$this->assertSame( [ '*' ], FeedbackAccess::parseGroupList( '*' ) );
+		$this->assertSame( [ '*' ], FeedbackAccess::parseGroupList( "*\n" ) );
+		$this->assertSame( [ '*' ], FeedbackAccess::parseGroupList( "  *  \n" ) );
+	}
+
+	public function testParseStarWithListMarkupIsEveryoneToken(): void {
+		$this->assertSame( [ '*' ], FeedbackAccess::parseGroupList( '* *' ) );
+		$this->assertSame( [ '*', 'sysop' ], FeedbackAccess::parseGroupList( "* *\n* sysop\n" ) );
+	}
+
 	public function testParseEmptyReturnsEmpty(): void {
 		$this->assertSame( [], FeedbackAccess::parseGroupList( '' ) );
 		$this->assertSame( [], FeedbackAccess::parseGroupList( "# only comments\n" ) );

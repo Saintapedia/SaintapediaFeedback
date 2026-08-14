@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS /*_*/spf_feedback (
 	-- Free-text comment (short in public mode, long in enterprise)
 	fb_comment TEXT NULL DEFAULT NULL,
 
-	-- Optional contact email (enterprise mode only, stored hashed for privacy unless opted in)
+	-- Optional contact email (enterprise / EnableEmail). Stored plaintext so
+	-- editors can follow up; dashboard list queries omit this column.
 	fb_contact_email VARBINARY(255) NULL DEFAULT NULL,
 
 	-- 'public' or 'enterprise'
@@ -54,6 +55,7 @@ CREATE TABLE IF NOT EXISTS /*_*/spf_feedback (
 	PRIMARY KEY (fb_id),
 	INDEX spf_page (fb_page_id, fb_timestamp),
 	INDEX spf_status (fb_status, fb_timestamp),
+	INDEX spf_ip_time (fb_ip_hash, fb_timestamp),
 	INDEX spf_user (fb_user_id),
 	INDEX spf_llm (fb_llm_processed, fb_timestamp),
 	INDEX spf_priority (fb_priority, fb_status, fb_timestamp),

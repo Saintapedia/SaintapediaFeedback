@@ -7,6 +7,28 @@ use Wikimedia\Rdbms\ILoadBalancer;
 
 class FeedbackStore {
 
+	/**
+	 * Columns loaded for dashboard / per-page manager lists.
+	 * Omits contact email and IP hash so list queries do not materialize PII.
+	 */
+	public const MANAGER_LIST_FIELDS = [
+		'fb_id',
+		'fb_page_id',
+		'fb_page_namespace',
+		'fb_page_title',
+		'fb_categories',
+		'fb_comment',
+		'fb_mode',
+		'fb_status',
+		'fb_status_user_id',
+		'fb_status_timestamp',
+		'fb_timestamp',
+		'fb_priority',
+		'fb_work_note',
+		'fb_resolution_public',
+		'fb_resolution_summary',
+	];
+
 	private ILoadBalancer $loadBalancer;
 	private Config $config;
 
@@ -69,7 +91,9 @@ class FeedbackStore {
 
 	/** Count submissions from a given IP hash within the past 24 hours. */
 	public function countRecentByIpHash( string $ipHash ): int {
-		$db = $this->loadBalancer->getConnection( DB_REPLICA );
+		// Primary avoids replica-lag undercount. Concurrent submits can still
+		// both pass this COUNT before either INSERT (no lock / transaction).
+		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
 		$cutoff = $db->timestamp( time() - 86400 );
 		return (int)$db->selectField(
 			'spf_feedback',
@@ -87,7 +111,7 @@ class FeedbackStore {
 		$db = $this->loadBalancer->getConnection( DB_REPLICA );
 		$rows = $db->select(
 			'spf_feedback',
-			'*',
+			self::MANAGER_LIST_FIELDS,
 			[ 'fb_page_id' => $pageId ],
 			__METHOD__,
 			[
@@ -108,7 +132,7 @@ class FeedbackStore {
 	public function getDashboard( array $filters, int $limit = 50, int $offset = 0 ): array {
 		$db = $this->loadBalancer->getConnection( DB_REPLICA );
 		[ $conds, $options ] = $this->buildDashboardQuery( $db, $filters, $limit, $offset );
-		$rows = $db->select( 'spf_feedback', '*', $conds, __METHOD__, $options );
+		$rows = $db->select( 'spf_feedback', self::MANAGER_LIST_FIELDS, $conds, __METHOD__, $options );
 		return iterator_to_array( $rows );
 	}
 
@@ -209,7 +233,7 @@ class FeedbackStore {
 		$db = $this->loadBalancer->getConnection( DB_REPLICA );
 		$rows = $db->select(
 			'spf_feedback',
-			'*',
+			array_merge( self::MANAGER_LIST_FIELDS, [ 'fb_llm_processed' ] ),
 			[
 				'fb_llm_processed' => 0,
 				'fb_status'        => [ 'new', 'reviewed' ],

@@ -89,6 +89,7 @@
 	"saintapediafeedback-public-counts": "Public chip. $1 = open count, $2 = resolved (actioned) count.",
 	"saintapediafeedback-work-note": "Label for private editor work notes on dashboard",
 	"saintapediafeedback-work-note-placeholder": "Placeholder for private work note",
+	"saintapediafeedback-work-note-visibility": "Hint under the work-note field: who can see it",
 	"saintapediafeedback-actioned-hint": "Hint above actioned form encouraging a work note",
 	"saintapediafeedback-make-public": "Checkbox (default on) to publish resolution on the public list; used on single-item and bulk actioned flows",
 	"saintapediafeedback-resolution-summary-placeholder": "Placeholder for public resolution summary",

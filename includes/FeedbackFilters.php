@@ -75,4 +75,58 @@ class FeedbackFilters {
 	public static function processActions(): array {
 		return [ 'reviewed', 'actioned', 'dismissed' ];
 	}
+
+	/**
+	 * Build FeedbackStore::updateStatus $opts from a single-item status POST.
+	 *
+	 * workNote is included only when the field was submitted and non-empty, so
+	 * reviewed/dismissed forms (no textarea) do not NULL an existing note.
+	 *
+	 * @param string|null $workNote Raw POST value, or null if the field was absent
+	 * @param string|null $resolutionSummary
+	 * @return array{resolutionPublic:bool,resolutionSummary:string,workNote?:string}
+	 */
+	public static function statusUpdateOpts(
+		?string $workNote,
+		?string $resolutionSummary,
+		bool $makePublic
+	): array {
+		$opts = [
+			'resolutionPublic' => $makePublic,
+			'resolutionSummary' => $resolutionSummary ?? '',
+		];
+		if ( $workNote !== null && trim( $workNote ) !== '' ) {
+			$opts['workNote'] = $workNote;
+		}
+		return $opts;
+	}
+
+	/**
+	 * Add a pager offset to a query map when the user is not on page 1.
+	 *
+	 * @param array<string,mixed> $query
+	 * @return array<string,mixed>
+	 */
+	public static function withOffset( array $query, int $offset ): array {
+		if ( $offset > 0 ) {
+			$query['offset'] = $offset;
+		}
+		return $query;
+	}
+
+	/**
+	 * Snap a pager offset onto a valid page (0 when empty).
+	 *
+	 * Used so ?offset=100 on a 50-row list cannot render "Showing 101–50 of 50".
+	 */
+	public static function clampOffset( int $offset, int $total, int $limit ): int {
+		if ( $limit < 1 || $total <= 0 ) {
+			return 0;
+		}
+		$offset = max( 0, $offset );
+		if ( $offset < $total ) {
+			return $offset;
+		}
+		return (int)( floor( ( $total - 1 ) / $limit ) * $limit );
+	}
 }

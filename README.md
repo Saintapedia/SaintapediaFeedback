@@ -127,9 +127,9 @@ user
 | `autoconfirmed` | Autoconfirmed users |
 | `sysop` | Administrators |
 | `editor` | Your wiki’s editor group (if you have one) |
-| `*` | Everyone including anons (not recommended) |
+| `*` | Everyone including anons (not recommended). A line that is only `*` works; `* *` is the wiki-list form. |
 
-Blank lines and `#` comments are ignored. Cache invalidates on **save, delete, or move** of the access page.
+Blank lines and `#` or `;` comments are ignored. Cache invalidates on **save, delete, or move** of the access page.
 
 ### Blocks
 
@@ -159,7 +159,8 @@ Anyone who has the **`saintapediafeedback-view`** right **or** matches a group o
 - Anyone can submit (no login).
 - CSRF + POST-only API; blocked users/IPs denied.
 - hCaptcha when required (fail closed if misconfigured).
-- Per-IP rate limit (hashed IP only).
+- Per-IP rate limit (hashed IP only; counted on the primary DB).
+- Optional contact email is stored plaintext (so editors can follow up). Dashboard list queries do not select email or IP hash.
 - Namespace allowlist on API and widget.
 - Status changes: POST + edit token; bulk same.
 - Review UI is never public.
@@ -193,5 +194,7 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 ```
 
 ## Version
+
+**1.4.2** — preserve work notes on status change; primary-DB rate limit; paginate per-article view; lone `*` access token; omit PII from list queries; IP-hash index; read-only / PRG hardening.
 
 **1.4.0** — audit trail, toolbox counts, watchlist Echo, optional public counts, priority column for future SME, access config page.

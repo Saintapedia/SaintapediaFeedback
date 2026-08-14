@@ -23,6 +23,13 @@ namespace MediaWiki\Config {
 	}
 }
 
+namespace Wikimedia\Rdbms {
+	if ( !interface_exists( ILoadBalancer::class ) ) {
+		interface ILoadBalancer {
+		}
+	}
+}
+
 namespace {
 	$root = dirname( __DIR__, 2 );
 	spl_autoload_register( static function ( $class ) use ( $root ) {
