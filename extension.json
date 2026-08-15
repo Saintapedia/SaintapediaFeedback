@@ -137,7 +137,7 @@
 		},
 		"SaintapediaFeedbackNotifyWatchers": {
 			"value": true,
-			"description": "When true and Echo is loaded, notify watchers of the article who may manage feedback (FeedbackAccess). Never notifies users who cannot open the dashboard. Watchlist scan is capped at 100 users per submit."
+			"description": "When true and Echo is loaded, notify watchers of the article who may manage feedback (FeedbackAccess). Never notifies users who cannot open the dashboard. At most 100 eligible watchers per submit (scan capped at 1000 watchlist rows)."
 		},
 		"SaintapediaFeedbackShowPublicCounts": {
 			"value": false,

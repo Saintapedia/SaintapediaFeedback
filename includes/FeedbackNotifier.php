@@ -21,8 +21,11 @@ use Wikimedia\Rdbms\ILoadBalancer;
  */
 class FeedbackNotifier {
 
-	/** Cap watchlist scan so a popular article cannot fan out unbounded Echo. */
-	private const MAX_WATCHER_CANDIDATES = 100;
+	/** Upper bound on watchlist rows read (popular articles). */
+	private const WATCHER_SCAN_CAP = 1000;
+
+	/** Max Echo recipients from the watchlist after FeedbackAccess filtering. */
+	private const MAX_WATCHER_RECIPIENTS = 100;
 
 	/**
 	 * @param int $feedbackId
@@ -74,10 +77,15 @@ class FeedbackNotifier {
 		// raw comments (extra.comment) to users who cannot open the dashboard.
 		if ( $config->get( 'SaintapediaFeedbackNotifyWatchers' ) ) {
 			$userFactory = MediaWikiServices::getInstance()->getUserFactory();
+			$watcherHits = 0;
 			foreach ( self::getWatcherUserIds( $title ) as $wid ) {
 				$user = $userFactory->newFromId( (int)$wid );
 				if ( FeedbackAccess::isPersistentAccount( $user ) && FeedbackAccess::userCanManage( $user ) ) {
 					$ids[] = (int)$wid;
+					$watcherHits++;
+					if ( $watcherHits >= self::MAX_WATCHER_RECIPIENTS ) {
+						break;
+					}
 				}
 			}
 		}
@@ -114,7 +122,11 @@ class FeedbackNotifier {
 				'wl_title'     => $title->getDBkey(),
 			],
 			__METHOD__,
-			[ 'DISTINCT' => true, 'LIMIT' => self::MAX_WATCHER_CANDIDATES ]
+			[
+				'DISTINCT' => true,
+				'ORDER BY' => 'wl_user',
+				'LIMIT'    => self::WATCHER_SCAN_CAP,
+			]
 		);
 		$ids = [];
 		foreach ( $res as $row ) {

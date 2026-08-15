@@ -128,7 +128,6 @@
 	/* ── Build widget ──────────────────────────────────────────────────── */
 
 	function buildWidget() {
-		// FAB button (click opens; × / long-press hides for this tab)
 		var fab = el( 'button', {
 			class: 'spf-fab',
 			type: 'button',

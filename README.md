@@ -228,7 +228,7 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 
 ## Version
 
-**1.6.0** — production hardening: default dashboard access is `sysop` (option C is opt-in); contact email shown to managers; rate-limit lock; export `Cache-Control: private, no-store`; `log_note` schema fix; Special:SpecialPages title; watcher Echo scan capped at 100. Readers can hide the floating button (session + long-press or ×); restore via the edge tab or Tools → Improve this article.
+**1.6.0** — production hardening: default dashboard access is `sysop` (option C is opt-in); contact email shown to managers; rate-limit lock; export `Cache-Control: private, no-store`; `log_note` schema fix; Special:SpecialPages title; watcher Echo capped at 100 eligible managers (scan 1000). Readers can hide the floating button (session + long-press or ×); restore via the edge tab or Tools → Improve this article.
 
 **1.5.2** — audit actors use persistent (named) accounts only; access copy says named accounts, not “all logged-in”.
 
