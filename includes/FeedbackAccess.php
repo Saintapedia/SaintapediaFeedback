@@ -56,7 +56,7 @@ class FeedbackAccess {
 			? $user
 			: MediaWikiServices::getInstance()->getUserFactory()->newFromUserIdentity( $user );
 
-		// Blocks revoke dashboard access (including option-C "any registered" users).
+		// Blocks revoke dashboard access (including option-C named accounts).
 		// Mirrors ApiSubmitFeedback: any block (incl. partial) is enough to deny.
 		// Admins must not assume "block" alone is a no-op under the broad default.
 		if ( self::userIsBlocked( $userObj ) ) {
@@ -68,7 +68,24 @@ class FeedbackAccess {
 			return true;
 		}
 
-		$groups = self::getAllowedGroups();
+		$effective = MediaWikiServices::getInstance()
+			->getUserGroupManager()
+			->getUserEffectiveGroups( $userObj );
+
+		return self::groupsGrantAccess( self::getAllowedGroups(), $userObj, $effective );
+	}
+
+	/**
+	 * Whether the access-page group list grants this identity.
+	 *
+	 * Ignores blocks and saintapediafeedback-view (applied in userCanManage).
+	 * The `user` token matches named accounts only — not anons, not temps.
+	 *
+	 * @param string[] $groups
+	 * @param object $user User / UserIdentity / test double
+	 * @param string[] $effectiveGroups from UserGroupManager
+	 */
+	public static function groupsGrantAccess( array $groups, $user, array $effectiveGroups = [] ): bool {
 		if ( !$groups ) {
 			$groups = self::DEFAULT_GROUPS;
 		}
@@ -78,19 +95,15 @@ class FeedbackAccess {
 		}
 
 		// Option C: any persistent registered account (temps are not "user")
-		if ( in_array( 'user', $groups, true ) && self::isPersistentAccount( $userObj ) ) {
+		if ( in_array( 'user', $groups, true ) && self::isPersistentAccount( $user ) ) {
 			return true;
 		}
-
-		$effective = MediaWikiServices::getInstance()
-			->getUserGroupManager()
-			->getUserEffectiveGroups( $userObj );
 
 		foreach ( $groups as $g ) {
 			if ( $g === 'user' || $g === '*' ) {
 				continue;
 			}
-			if ( in_array( $g, $effective, true ) ) {
+			if ( in_array( $g, $effectiveGroups, true ) ) {
 				return true;
 			}
 		}

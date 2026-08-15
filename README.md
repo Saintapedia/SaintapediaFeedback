@@ -99,9 +99,9 @@ $wgSaintapediaFeedbackMode = 'enterprise';
 
 Access is **configurable on-wiki** (no deploy required for day-to-day changes).
 
-### Default (option C — all logged-in users)
+### Default (option C — named accounts)
 
-If the config page is missing or empty, **any registered account** can open the dashboard (`user` group token). Anons cannot.
+If the config page is missing or empty, **any named account** can open the dashboard (`user` group token). Anons and MediaWiki temporary accounts cannot.
 
 ### Change who has access
 
@@ -112,7 +112,7 @@ That page lives in the **MediaWiki** namespace, which core restricts to users wi
 One group (or token) per line:
 
 ```
-# All logged-in users (default / option C)
+# Named accounts (default / option C)
 user
 
 # Or restrict, for example:
@@ -123,7 +123,7 @@ user
 
 | Token / group | Meaning |
 |---------------|---------|
-| `user` | Any registered account (option **C**) |
+| `user` | Any named account — not anon, not a MW temp account (option **C**) |
 | `autoconfirmed` | Autoconfirmed users |
 | `sysop` | Administrators |
 | `editor` | Your wiki’s editor group (if you have one) |
@@ -133,7 +133,7 @@ Blank lines and `#` or `;` comments are ignored. Cache invalidates on **save, de
 
 ### Blocks
 
-**A site/user block revokes dashboard access**, even under the default “any logged-in user” model. Blocking someone is enough to stop bulk-process/export abuse; you do not need to also remove them from a group. (Matches the submit API’s block check.)
+**A site/user block revokes dashboard access**, even under the default “named account” model. Blocking someone is enough to stop bulk-process/export abuse; you do not need to also remove them from a group. (Matches the submit API’s block check.)
 
 ### LocalSettings overrides
 
@@ -219,6 +219,8 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 ```
 
 ## Version
+
+**1.5.2** — audit actors use persistent (named) accounts only; access copy says named accounts, not “all logged-in”.
 
 **1.5.1** — treat MW temp accounts as anonymous on submit **and** dashboard access; inject `TitleFactory` (drops deprecated `Title::newFromID`).
 

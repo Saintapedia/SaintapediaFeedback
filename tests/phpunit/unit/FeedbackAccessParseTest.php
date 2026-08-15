@@ -7,6 +7,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::parseGroupList
+ * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::isPersistentAccount
+ * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::groupsGrantAccess
  */
 class FeedbackAccessParseTest extends TestCase {
 
@@ -51,6 +53,38 @@ TEXT;
 		$this->assertFalse( FeedbackAccess::isPersistentAccount( new FakeIdentityUser( true, true ) ) );
 		$this->assertTrue( FeedbackAccess::isPersistentAccount( new FakeIdentityUser( true, false ) ) );
 		$this->assertTrue( FeedbackAccess::isPersistentAccount( new FakeNamedUserNoTempMethod() ) );
+	}
+
+	public function testUserTokenDeniesTempAndAnon(): void {
+		$temp = new FakeIdentityUser( true, true );
+		$anon = new FakeIdentityUser( false, false );
+		$named = new FakeIdentityUser( true, false );
+		$preIsTemp = new FakeNamedUserNoTempMethod();
+
+		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [ 'user' ], $temp ) );
+		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [ 'user' ], $anon ) );
+		$this->assertTrue( FeedbackAccess::groupsGrantAccess( [ 'user' ], $named ) );
+		$this->assertTrue( FeedbackAccess::groupsGrantAccess( [ 'user' ], $preIsTemp ) );
+	}
+
+	public function testUserTokenEmptyListUsesDefaultAndStillDeniesTemp(): void {
+		$temp = new FakeIdentityUser( true, true );
+		$named = new FakeIdentityUser( true, false );
+		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [], $temp ) );
+		$this->assertTrue( FeedbackAccess::groupsGrantAccess( [], $named ) );
+	}
+
+	public function testStarTokenAllowsTemp(): void {
+		$this->assertTrue( FeedbackAccess::groupsGrantAccess(
+			[ '*' ],
+			new FakeIdentityUser( true, true )
+		) );
+	}
+
+	public function testNamedGroupRequiresEffectiveMembership(): void {
+		$temp = new FakeIdentityUser( true, true );
+		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [ 'sysop' ], $temp ) );
+		$this->assertTrue( FeedbackAccess::groupsGrantAccess( [ 'sysop' ], $temp, [ 'sysop' ] ) );
 	}
 }
 
