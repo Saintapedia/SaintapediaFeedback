@@ -31,6 +31,29 @@
 	var hcaptchaScriptPromise = null;
 	var hcaptchaWidgetId = null;
 
+	// Hide the FAB for this wiki + browser tab only. Restore via edge tab or Tools.
+	var fabStorageKey = 'spf-fab-hidden:' + ( mw.config.get( 'wgDBname' ) || '' );
+
+	function isFabHidden() {
+		try {
+			return sessionStorage.getItem( fabStorageKey ) === '1';
+		} catch ( e ) {
+			return false;
+		}
+	}
+
+	function setFabHidden( hidden ) {
+		try {
+			if ( hidden ) {
+				sessionStorage.setItem( fabStorageKey, '1' );
+			} else {
+				sessionStorage.removeItem( fabStorageKey );
+			}
+		} catch ( e ) {
+			// private mode / blocked storage
+		}
+	}
+
 	/* ── DOM helpers ───────────────────────────────────────────────────── */
 
 	function el( tag, attrs, children ) {
@@ -105,17 +128,39 @@
 	/* ── Build widget ──────────────────────────────────────────────────── */
 
 	function buildWidget() {
-		// FAB button
 		var fab = el( 'button', {
 			class: 'spf-fab',
+			type: 'button',
 			'aria-label': mw.msg( 'saintapediafeedback-button-label' ),
 			'aria-haspopup': 'dialog',
-			'aria-expanded': 'false',
-			onclick: togglePanel
+			'aria-expanded': 'false'
 		}, [
 			el( 'span', { class: 'spf-fab-icon', 'aria-hidden': 'true' } ),
 			el( 'span', { class: 'spf-fab-label' }, [ mw.msg( 'saintapediafeedback-button-label' ) ] )
 		] );
+
+		var hideBtn = el( 'button', {
+			class: 'spf-fab-hide',
+			type: 'button',
+			'aria-label': mw.msg( 'saintapediafeedback-hide' )
+		}, [ '×' ] );
+
+		var fabWrap = el( 'div', { class: 'spf-fab-wrap' }, [ hideBtn, fab ] );
+
+		var edgeTab = el( 'button', {
+			class: 'spf-fab-tab',
+			type: 'button',
+			hidden: true,
+			'aria-label': mw.msg( 'saintapediafeedback-show' )
+		}, [
+			el( 'span', { class: 'spf-fab-icon', 'aria-hidden': 'true' } )
+		] );
+
+		var announce = el( 'div', {
+			class: 'spf-sr-only',
+			role: 'status',
+			'aria-live': 'polite'
+		} );
 
 		// Overlay backdrop
 		var backdrop = el( 'div', {
@@ -248,7 +293,46 @@
 
 		/* ── Panel open/close ─────────────────────────────────────── */
 
+		var containerEl = null;
+		var hidByLongPress = false;
+		var longPressTimer = null;
+
+		function applyFabHidden( hidden, opts ) {
+			opts = opts || {};
+			setFabHidden( hidden );
+			if ( containerEl ) {
+				containerEl.classList.toggle( 'spf-fab--hidden', hidden );
+			}
+			fabWrap.hidden = hidden;
+			edgeTab.hidden = !hidden;
+			if ( hidden ) {
+				if ( opts.announce ) {
+					announce.textContent = mw.msg( 'saintapediafeedback-hidden' );
+				}
+				if ( opts.focus ) {
+					edgeTab.focus();
+				}
+			} else {
+				announce.textContent = '';
+				if ( opts.focus ) {
+					fab.focus();
+				}
+			}
+		}
+
+		function hideFab() {
+			closePanel();
+			applyFabHidden( true, { announce: true, focus: true } );
+		}
+
+		function showFab() {
+			applyFabHidden( false, { focus: true } );
+		}
+
 		function openPanel() {
+			if ( fabWrap.hidden ) {
+				showFab();
+			}
 			backdrop.classList.add( 'spf-backdrop--visible' );
 			panel.classList.add( 'spf-panel--open' );
 			fab.setAttribute( 'aria-expanded', 'true' );
@@ -271,6 +355,53 @@
 				closePanel();
 			} else {
 				openPanel();
+			}
+		}
+
+		function clearLongPress() {
+			if ( longPressTimer ) {
+				clearTimeout( longPressTimer );
+				longPressTimer = null;
+			}
+		}
+
+		fab.addEventListener( 'click', function () {
+			if ( hidByLongPress ) {
+				hidByLongPress = false;
+				return;
+			}
+			togglePanel();
+		} );
+
+		hideBtn.addEventListener( 'click', function ( e ) {
+			e.preventDefault();
+			e.stopPropagation();
+			hideFab();
+		} );
+
+		edgeTab.addEventListener( 'click', function () {
+			openPanel();
+		} );
+
+		fab.addEventListener( 'pointerdown', function ( e ) {
+			if ( e.pointerType === 'mouse' && e.button !== 0 ) {
+				return;
+			}
+			hidByLongPress = false;
+			clearLongPress();
+			longPressTimer = setTimeout( function () {
+				hidByLongPress = true;
+				hideFab();
+			}, 550 );
+		} );
+		fab.addEventListener( 'pointerup', clearLongPress );
+		fab.addEventListener( 'pointercancel', clearLongPress );
+		fab.addEventListener( 'pointerleave', clearLongPress );
+
+		function bindContainer( node ) {
+			containerEl = node;
+			if ( isFabHidden() ) {
+				applyFabHidden( true );
 			}
 		}
 
@@ -381,7 +512,16 @@
 			}
 		} );
 
-		return { fab: fab, backdrop: backdrop, panel: panel };
+		return {
+			fabWrap: fabWrap,
+			edgeTab: edgeTab,
+			announce: announce,
+			backdrop: backdrop,
+			panel: panel,
+			bindContainer: bindContainer,
+			openPanel: openPanel,
+			showFab: showFab
+		};
 	}
 
 	/* ── Init ──────────────────────────────────────────────────────────── */
@@ -418,9 +558,37 @@
 			container.appendChild( chip );
 		}
 		container.appendChild( widgets.backdrop );
-		container.appendChild( widgets.fab );
+		container.appendChild( widgets.fabWrap );
+		container.appendChild( widgets.edgeTab );
+		container.appendChild( widgets.announce );
 		container.appendChild( widgets.panel );
 		document.body.appendChild( container );
+		widgets.bindContainer( container );
+
+		function openFromTools( e ) {
+			if ( e ) {
+				e.preventDefault();
+			}
+			widgets.showFab();
+			widgets.openPanel();
+		}
+
+		document.addEventListener( 'click', function ( e ) {
+			var link = e.target && e.target.closest
+				? e.target.closest( '#t-saintapediafeedback-widget, a[href="#spf-feedback"]' )
+				: null;
+			if ( link ) {
+				openFromTools( e );
+			}
+		} );
+
+		if ( window.location.hash === '#spf-feedback' ) {
+			openFromTools();
+		}
+
+		mw.hook( 'saintapediafeedback.open' ).add( function () {
+			openFromTools();
+		} );
 	}
 
 	mw.hook( 'wikipage.content' ).add( init );

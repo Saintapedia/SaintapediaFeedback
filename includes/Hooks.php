@@ -72,16 +72,12 @@ class Hooks {
 	}
 
 	/**
-	 * Toolbox link for editors: jump to this page's feedback on the special page.
+	 * Toolbox: reader entry to open/restore the widget; managers also get the dashboard.
 	 *
 	 * @param Skin $skin
 	 * @param array &$sidebar
 	 */
 	public static function onSidebarBeforeOutput( Skin $skin, &$sidebar ): void {
-		$user = $skin->getUser();
-		if ( !FeedbackAccess::userCanManage( $user ) ) {
-			return;
-		}
 		$title = $skin->getTitle();
 		if ( !$title || !$title->exists() || $title->isSpecialPage() ) {
 			return;
@@ -89,6 +85,20 @@ class Hooks {
 		$config = self::getConfig();
 		$allowedNamespaces = $config->get( 'SaintapediaFeedbackNamespaces' );
 		if ( !in_array( $title->getNamespace(), $allowedNamespaces, true ) ) {
+			return;
+		}
+
+		$action = $skin->getRequest()->getVal( 'action', 'view' );
+		if ( $action === 'view' ) {
+			// Restore path if the reader hid the FAB (session). Also a second open entry.
+			$sidebar['TOOLBOX']['saintapediafeedback-widget'] = [
+				'id'   => 't-saintapediafeedback-widget',
+				'href' => '#spf-feedback',
+				'text' => $skin->msg( 'saintapediafeedback-button-label' )->text(),
+			];
+		}
+
+		if ( !FeedbackAccess::userCanManage( $skin->getUser() ) ) {
 			return;
 		}
 
@@ -143,6 +153,11 @@ class Hooks {
 			'spf_feedback',
 			'fb_work_note',
 			$dir . '/patch-work-notes-public.sql'
+		);
+		$updater->addExtensionField(
+			'spf_feedback_log',
+			'log_note',
+			$dir . '/patch-log-note.sql'
 		);
 		$updater->addExtensionIndex(
 			'spf_feedback',

@@ -224,6 +224,11 @@
 	white-space: pre-wrap;
 }
 
+.spf-contact-email {
+	font-size: 0.85rem;
+	margin: 6px 0;
+}
+
 .spf-feedback-actions {
 	margin-top: 10px;
 	display: flex;

@@ -42,7 +42,7 @@ class SpecialFeedback extends SpecialPage {
 	}
 
 	/**
-	 * Allow access via MediaWiki:SaintapediaFeedback-access groups (default: named accounts, not temp),
+	 * Allow access via MediaWiki:SaintapediaFeedback-access groups (default: sysop),
 	 * or the saintapediafeedback-view right.
 	 *
 	 * @param User $user
@@ -218,9 +218,10 @@ class SpecialFeedback extends SpecialPage {
 		$out->addHTML( $this->renderBulkToolbar() );
 		$out->addHTML( Html::closeElement( 'form' ) );
 
+		$emails = $this->contactEmailsForRows( $rows );
 		$out->addHTML( Html::openElement( 'div', [ 'class' => 'spf-feedback-list spf-dashboard-list' ] ) );
 		foreach ( $rows as $row ) {
-			$this->renderFeedbackRow( $row, true );
+			$this->renderFeedbackRow( $row, true, $emails[(int)$row->fb_id] ?? null );
 		}
 		$out->addHTML( Html::closeElement( 'div' ) );
 
@@ -275,9 +276,10 @@ class SpecialFeedback extends SpecialPage {
 			);
 		}
 
+		$emails = $this->contactEmailsForRows( $rows );
 		$out->addHTML( '<div class="spf-feedback-list">' );
 		foreach ( $rows as $row ) {
-			$this->renderFeedbackRow( $row, false );
+			$this->renderFeedbackRow( $row, false, $emails[(int)$row->fb_id] ?? null );
 		}
 		$out->addHTML( '</div>' );
 
@@ -582,6 +584,8 @@ class SpecialFeedback extends SpecialPage {
 		$response = $this->getRequest()->response();
 		$response->header( 'Content-Type: application/json; charset=utf-8' );
 		$response->header( 'X-Content-Type-Options: nosniff' );
+		$response->header( 'Cache-Control: private, no-store' );
+		$response->header( 'Pragma: no-cache' );
 		// phpcs:ignore MediaWiki.Usage.ForbiddenFunctions.echo
 		echo json_encode( [
 			'count' => count( $data ),
@@ -922,10 +926,31 @@ class SpecialFeedback extends SpecialPage {
 	}
 
 	/**
+	 * Contact emails for displayed rows only. Separate query so list SELECTs
+	 * never materialize fb_contact_email. Empty when the email field is off.
+	 *
+	 * @param object[] $rows
+	 * @return array<int,string>
+	 */
+	private function contactEmailsForRows( array $rows ): array {
+		$mode = $this->getConfig()->get( 'SaintapediaFeedbackMode' );
+		$enable = $mode === 'enterprise' || $this->getConfig()->get( 'SaintapediaFeedbackEnableEmail' );
+		if ( !$enable || !$rows ) {
+			return [];
+		}
+		$ids = [];
+		foreach ( $rows as $row ) {
+			$ids[] = (int)$row->fb_id;
+		}
+		return $this->store->getContactEmailsById( $ids );
+	}
+
+	/**
 	 * @param object $row DB row
 	 * @param bool $showPage Whether to show article title (dashboard mode)
+	 * @param string|null $contactEmail Follow-up address; omitted from list queries
 	 */
-	private function renderFeedbackRow( object $row, bool $showPage ): void {
+	private function renderFeedbackRow( object $row, bool $showPage, ?string $contactEmail = null ): void {
 		$out        = $this->getOutput();
 		$categories = json_decode( $row->fb_categories, true ) ?? [];
 		$catLabels  = implode( ', ', array_map( function ( $cat ) {
@@ -1007,6 +1032,14 @@ class SpecialFeedback extends SpecialPage {
 		if ( $row->fb_comment ) {
 			$out->addHTML( '<div class="spf-feedback-comment">'
 				. nl2br( htmlspecialchars( $row->fb_comment ) ) . '</div>' );
+		}
+
+		if ( $contactEmail && filter_var( $contactEmail, FILTER_VALIDATE_EMAIL ) ) {
+			$out->addHTML( '<div class="spf-contact-email">'
+				. $this->msg( 'saintapediafeedback-contact-email' )
+					->rawParams( Html::element( 'a', [ 'href' => 'mailto:' . $contactEmail ], $contactEmail ) )
+					->parse()
+				. '</div>' );
 		}
 
 		// Work note (managers only — not on Talk; visible to anyone who can open this dashboard)

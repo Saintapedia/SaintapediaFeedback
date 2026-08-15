@@ -6,7 +6,7 @@ Product direction for SaintapediaFeedback: help **enterprise editors** improve p
 
 | Topic | Decision |
 |-------|----------|
-| Who can manage | Configurable via `MediaWiki:SaintapediaFeedback-access`; default **named accounts** (`user`; not temp) |
+| Who can manage | Configurable via `MediaWiki:SaintapediaFeedback-access`; default **sysop**. Option C (`user` = named accounts, not temp) is opt-in |
 | Audit trail | Yes — last actor + timestamp; `spf_feedback_log` |
 | Toolbox count | Yes — “Page feedback (N new)” for managers |
 | **Public count chip** | **Default off** — use public *resolutions* instead of a noisy badge |
@@ -23,7 +23,7 @@ Product direction for SaintapediaFeedback: help **enterprise editors** improve p
 | Layer | Where | Who sees it |
 |-------|--------|-------------|
 | Reader feedback | Dashboard only | Managers |
-| **Work note** (private) | Dashboard when processing | Anyone who can open the dashboard (default: named accounts). Not on Talk. |
+| **Work note** (private) | Dashboard when processing | Anyone who can open the dashboard (default: administrators). Not on Talk. |
 | **Public resolution** | `Special:SaintapediaFeedback/resolutions/<pageid>` | Anyone |
 | **Talk (optional)** | Checkbox on actioned → short section + link | Talk watchers |
 
@@ -72,7 +72,7 @@ See [LLM.md](LLM.md). `ProcessFeedbackLlm.php` pulls a pending batch, POSTs to `
 ## Config cheat sheet
 
 ```php
-$wgSaintapediaFeedbackAccessGroups = [ 'user' ];
+$wgSaintapediaFeedbackAccessGroups = [ 'sysop' ]; // option C: [ 'user' ]
 $wgSaintapediaFeedbackNotifyWatchers = true;
 $wgSaintapediaFeedbackNotifyUsers = [ 'Admin' ];
 $wgSaintapediaFeedbackShowPublicCounts = false; // hold off

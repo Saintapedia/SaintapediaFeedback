@@ -4,7 +4,7 @@ MediaWiki extension: floating **“Improve this article”** widget for readers,
 
 | Audience | What they get |
 |----------|----------------|
-| **Readers** | Submit without an account (public mode), with hCaptcha, rate limits, and block checks |
+| **Readers** | Submit without an account (public mode), with hCaptcha, rate limits, and block checks. Hide the floating button (× or long-press) for this tab; restore from the screen-edge tab or **Tools → Improve this article** |
 | **Editors** | Dashboard + toolbox link (`saintapediafeedback-view`, granted to **sysop** by default) |
 
 Requires **MediaWiki ≥ 1.39**.
@@ -24,7 +24,7 @@ Log in as a user who has the `saintapediafeedback-view` right (usually **Admin**
 
 Default filter is **New**. Use the status chips (or **All**) to see other items. Search, bulk process, and JSON export are on that same page.
 
-Anonymous users get a permission error on the special page (by design).
+Anonymous users and ordinary named accounts get a permission error on the special page (by design; default access is sysop).
 
 ---
 
@@ -60,6 +60,8 @@ $wgHCaptchaSecretKey = getenv( 'HCAPTCHA_SECRET_KEY' );
 
 wfLoadExtension( 'SaintapediaFeedback' );
 $wgSaintapediaFeedbackMode = 'public';
+// Dashboard is sysop-only by default. Option C (any named account):
+// $wgSaintapediaFeedbackAccessGroups = [ 'user' ];
 // $wgSaintapediaFeedbackRequireCaptcha = null; // auto: on for public
 // $wgSaintapediaFeedbackRateLimit = 5;
 
@@ -99,9 +101,11 @@ $wgSaintapediaFeedbackMode = 'enterprise';
 
 Access is **configurable on-wiki** (no deploy required for day-to-day changes).
 
-### Default (option C — named accounts)
+### Default (administrators)
 
-If the config page is missing or empty, **any named account** can open the dashboard (`user` group token). Anons and MediaWiki temporary accounts cannot.
+If the config page is missing or empty, only **sysop** (and anyone granted `saintapediafeedback-view`) can open the dashboard. Anons, temp accounts, and ordinary named accounts cannot.
+
+To restore option C (any named account) put `user` on the access page, or set `$wgSaintapediaFeedbackAccessGroups = [ 'user' ]`.
 
 ### Change who has access
 
@@ -112,20 +116,22 @@ That page lives in the **MediaWiki** namespace, which core restricts to users wi
 One group (or token) per line:
 
 ```
-# Named accounts (default / option C)
-user
+# Administrators (default)
+sysop
 
-# Or restrict, for example:
-# sysop
+# Option C — any named account (not temp):
+# user
+
+# Or restrict further, for example:
 # editor
 # autoconfirmed
 ```
 
 | Token / group | Meaning |
 |---------------|---------|
-| `user` | Any named account — not anon, not a MW temp account (option **C**) |
+| `sysop` | Administrators (**default**) |
+| `user` | Any named account — not anon, not a MW temp account (option **C**, opt-in) |
 | `autoconfirmed` | Autoconfirmed users |
-| `sysop` | Administrators |
 | `editor` | Your wiki’s editor group (if you have one) |
 | `*` | Everyone including anons (not recommended). A line that is only `*` works; `* *` is the wiki-list form. |
 
@@ -133,13 +139,15 @@ Blank lines and `#` or `;` comments are ignored. Cache invalidates on **save, de
 
 ### Blocks
 
-**A site/user block revokes dashboard access**, even under the default “named account” model. Blocking someone is enough to stop bulk-process/export abuse; you do not need to also remove them from a group. (Matches the submit API’s block check.)
+**A site/user block revokes dashboard access**, even if the person is a sysop or matches the access page. Blocking someone is enough to stop bulk-process/export abuse; you do not need to also remove them from a group. (Matches the submit API’s block check.)
 
 ### LocalSettings overrides
 
 ```php
-// PHP default when the MediaWiki page is empty/missing (default is already ['user'])
-$wgSaintapediaFeedbackAccessGroups = [ 'user' ];
+// PHP default when the MediaWiki page is empty/missing (default is already ['sysop'])
+$wgSaintapediaFeedbackAccessGroups = [ 'sysop' ];
+// Intranet / option C — any named account:
+// $wgSaintapediaFeedbackAccessGroups = [ 'user' ];
 
 // Rename the config page (MediaWiki-namespace DB key, no prefix)
 // $wgSaintapediaFeedbackAccessPage = 'SaintapediaFeedback-access';
@@ -219,6 +227,8 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 ```
 
 ## Version
+
+**1.6.0** — production hardening: default dashboard access is `sysop` (option C is opt-in); contact email shown to managers; rate-limit lock; export `Cache-Control: private, no-store`; `log_note` schema fix; Special:SpecialPages title; watcher Echo capped at 100 eligible managers (scan 1000). Readers can hide the floating button (session + long-press or ×); restore via the edge tab or Tools → Improve this article.
 
 **1.5.2** — audit actors use persistent (named) accounts only; access copy says named accounts, not “all logged-in”.
 

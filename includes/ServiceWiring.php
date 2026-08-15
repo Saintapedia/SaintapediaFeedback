@@ -6,8 +6,7 @@ use MediaWiki\MediaWikiServices;
 return [
 	'SaintapediaFeedback.FeedbackStore' => static function ( MediaWikiServices $services ): FeedbackStore {
 		return new FeedbackStore(
-			$services->getDBLoadBalancer(),
-			$services->getMainConfig()
+			$services->getDBLoadBalancer()
 		);
 	},
 ];
