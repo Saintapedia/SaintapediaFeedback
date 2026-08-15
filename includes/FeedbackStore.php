@@ -2,8 +2,8 @@
 
 namespace MediaWiki\Extension\SaintapediaFeedback;
 
-use MediaWiki\Config\Config;
 use MediaWiki\Extension\SaintapediaFeedback\Llm\FeedbackLlmBatchSource;
+use Wikimedia\Rdbms\IDatabase;
 use Wikimedia\Rdbms\ILoadBalancer;
 
 class FeedbackStore implements FeedbackLlmBatchSource {
@@ -31,15 +31,43 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 	];
 
 	private ILoadBalancer $loadBalancer;
-	private Config $config;
 
-	public function __construct( ILoadBalancer $loadBalancer, Config $config ) {
+	public function __construct( ILoadBalancer $loadBalancer ) {
 		$this->loadBalancer = $loadBalancer;
-		$this->config = $config;
 	}
 
 	public function insert( array $data ): int {
+		return $this->insertOn( $this->loadBalancer->getConnection( DB_PRIMARY ), $data );
+	}
+
+	/**
+	 * Insert only if this IP hash is under the 24h cap.
+	 * Serializes same-hash submits with a named lock so concurrent COUNTs
+	 * cannot all pass (including the first-row empty-range case).
+	 *
+	 * @return int|null New id, or null when over the limit / lock unavailable
+	 */
+	public function tryInsertUnderLimit( array $data, int $limit ): ?int {
+		$ipHash = (string)( $data['ipHash'] ?? '' );
+		if ( $ipHash === '' || $limit < 1 ) {
+			return null;
+		}
 		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
+		$lockName = 'spf-rl-' . substr( $ipHash, 0, 40 );
+		if ( !$db->lock( $lockName, __METHOD__, 3 ) ) {
+			return null;
+		}
+		try {
+			if ( $this->countRecentByIpHash( $ipHash, $db ) >= $limit ) {
+				return null;
+			}
+			return $this->insertOn( $db, $data );
+		} finally {
+			$db->unlock( $lockName, __METHOD__ );
+		}
+	}
+
+	private function insertOn( IDatabase $db, array $data ): int {
 		$db->insert(
 			'spf_feedback',
 			[
@@ -58,7 +86,7 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 			],
 			__METHOD__
 		);
-		return $db->insertId();
+		return (int)$db->insertId();
 	}
 
 	/**
@@ -90,11 +118,13 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 		];
 	}
 
-	/** Count submissions from a given IP hash within the past 24 hours. */
-	public function countRecentByIpHash( string $ipHash ): int {
-		// Primary avoids replica-lag undercount. Concurrent submits can still
-		// both pass this COUNT before either INSERT (no lock / transaction).
-		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
+	/**
+	 * Count submissions from a given IP hash within the past 24 hours.
+	 *
+	 * @param IDatabase|null $db Primary connection when called under tryInsertUnderLimit
+	 */
+	public function countRecentByIpHash( string $ipHash, ?IDatabase $db = null ): int {
+		$db ??= $this->loadBalancer->getConnection( DB_PRIMARY );
 		$cutoff = $db->timestamp( time() - 86400 );
 		return (int)$db->selectField(
 			'spf_feedback',
@@ -105,6 +135,34 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 			],
 			__METHOD__
 		);
+	}
+
+	/**
+	 * Contact emails for the given ids only. Not part of list/export SELECTs.
+	 *
+	 * @param int[] $ids
+	 * @return array<int,string>
+	 */
+	public function getContactEmailsById( array $ids ): array {
+		$ids = array_values( array_unique( array_filter( array_map( 'intval', $ids ) ) ) );
+		if ( !$ids ) {
+			return [];
+		}
+		$db = $this->loadBalancer->getConnection( DB_REPLICA );
+		$res = $db->select(
+			'spf_feedback',
+			[ 'fb_id', 'fb_contact_email' ],
+			[ 'fb_id' => $ids ],
+			__METHOD__
+		);
+		$out = [];
+		foreach ( $res as $row ) {
+			$email = trim( (string)( $row->fb_contact_email ?? '' ) );
+			if ( $email !== '' ) {
+				$out[(int)$row->fb_id] = $email;
+			}
+		}
+		return $out;
 	}
 
 	/** Fetch feedback rows for a page, newest first. */
@@ -269,12 +327,6 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 	 *
 	 * When $pageId is provided, the row must belong to that page (prevents
 	 * cross-page status mutation from the special-page UI).
-	 *
-	 * @param int|null $actorUserId User who performed the change (null = system)
-	 * @return bool True if a matching row was updated
-	 */
-	/**
-	 * Update workflow status for a feedback row and append an audit log entry.
 	 *
 	 * @param array $opts Optional keys:
 	 *   - workNote (string|null) private editor note

@@ -80,10 +80,6 @@ class ApiSubmitFeedback extends ApiBase {
 			? $config->get( 'SaintapediaFeedbackEnterpriseRateLimit' )
 			: $config->get( 'SaintapediaFeedbackRateLimit' );
 
-		if ( $this->store->countRecentByIpHash( $ipHash ) >= $limit ) {
-			$this->dieWithError( 'saintapediafeedback-error-ratelimit' );
-		}
-
 		// Sanitize free text
 		$comment = $params['comment'] ?? null;
 		if ( $comment !== null ) {
@@ -107,7 +103,7 @@ class ApiSubmitFeedback extends ApiBase {
 			}
 		}
 
-		$id = $this->store->insert( [
+		$id = $this->store->tryInsertUnderLimit( [
 			'pageId'       => $title->getArticleID(),
 			'namespace'    => $title->getNamespace(),
 			'title'        => $title->getDBkey(),
@@ -117,7 +113,10 @@ class ApiSubmitFeedback extends ApiBase {
 			'comment'      => $comment,
 			'contactEmail' => $contactEmail,
 			'mode'         => $mode,
-		] );
+		], $limit );
+		if ( $id === null ) {
+			$this->dieWithError( 'saintapediafeedback-error-ratelimit' );
+		}
 
 		FeedbackNotifier::notifyNew( $id, $title, $categories, $comment, $user );
 

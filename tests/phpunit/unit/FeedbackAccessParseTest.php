@@ -44,8 +44,8 @@ TEXT;
 		$this->assertSame( [], FeedbackAccess::parseGroupList( "# only comments\n" ) );
 	}
 
-	public function testDefaultGroupsIsUser(): void {
-		$this->assertSame( [ 'user' ], FeedbackAccess::DEFAULT_GROUPS );
+	public function testDefaultGroupsIsSysop(): void {
+		$this->assertSame( [ 'sysop' ], FeedbackAccess::DEFAULT_GROUPS );
 	}
 
 	public function testPersistentAccountExcludesTempAndAnon(): void {
@@ -67,11 +67,12 @@ TEXT;
 		$this->assertTrue( FeedbackAccess::groupsGrantAccess( [ 'user' ], $preIsTemp ) );
 	}
 
-	public function testUserTokenEmptyListUsesDefaultAndStillDeniesTemp(): void {
+	public function testEmptyListUsesDefaultSysopNotUserToken(): void {
 		$temp = new FakeIdentityUser( true, true );
 		$named = new FakeIdentityUser( true, false );
 		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [], $temp ) );
-		$this->assertTrue( FeedbackAccess::groupsGrantAccess( [], $named ) );
+		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [], $named ) );
+		$this->assertTrue( FeedbackAccess::groupsGrantAccess( [], $named, [ 'sysop' ] ) );
 	}
 
 	public function testStarTokenAllowsTemp(): void {

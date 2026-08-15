@@ -144,6 +144,11 @@ class Hooks {
 			'fb_work_note',
 			$dir . '/patch-work-notes-public.sql'
 		);
+		$updater->addExtensionField(
+			'spf_feedback_log',
+			'log_note',
+			$dir . '/patch-log-note.sql'
+		);
 		$updater->addExtensionIndex(
 			'spf_feedback',
 			'spf_ip_time',

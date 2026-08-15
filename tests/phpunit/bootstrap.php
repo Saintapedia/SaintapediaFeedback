@@ -28,6 +28,10 @@ namespace Wikimedia\Rdbms {
 		interface ILoadBalancer {
 		}
 	}
+	if ( !interface_exists( IDatabase::class ) ) {
+		interface IDatabase {
+		}
+	}
 }
 
 namespace {

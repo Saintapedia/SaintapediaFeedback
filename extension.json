@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.5.2",
+	"version": "1.6.0",
 	"author": [ "Saintapedia contributors" ],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
@@ -129,12 +129,12 @@
 			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to manage feedback. Missing/empty page → AccessGroups default."
 		},
 		"SaintapediaFeedbackAccessGroups": {
-			"value": [ "user" ],
-			"description": "Default groups when the access page is missing or empty. 'user' = named accounts, not MW temp accounts (option C). Override via the MediaWiki access page."
+			"value": [ "sysop" ],
+			"description": "Default groups when the access page is missing or empty. Default is sysop (safe for public wikis). Set to ['user'] or put 'user' on the access page for option C (named accounts, not temps)."
 		},
 		"SaintapediaFeedbackNotifyWatchers": {
 			"value": true,
-			"description": "When true and Echo is loaded, notify watchers of the article who may manage feedback (FeedbackAccess). Never notifies users who cannot open the dashboard."
+			"description": "When true and Echo is loaded, notify watchers of the article who may manage feedback (FeedbackAccess). Never notifies users who cannot open the dashboard. Watchlist scan is capped at 100 users per submit."
 		},
 		"SaintapediaFeedbackShowPublicCounts": {
 			"value": false,

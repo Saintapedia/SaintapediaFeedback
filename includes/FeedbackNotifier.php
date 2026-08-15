@@ -21,6 +21,9 @@ use Wikimedia\Rdbms\ILoadBalancer;
  */
 class FeedbackNotifier {
 
+	/** Cap watchlist scan so a popular article cannot fan out unbounded Echo. */
+	private const MAX_WATCHER_CANDIDATES = 100;
+
 	/**
 	 * @param int $feedbackId
 	 * @param Title $title Page the feedback is about
@@ -111,7 +114,7 @@ class FeedbackNotifier {
 				'wl_title'     => $title->getDBkey(),
 			],
 			__METHOD__,
-			[ 'DISTINCT' ]
+			[ 'DISTINCT' => true, 'LIMIT' => self::MAX_WATCHER_CANDIDATES ]
 		);
 		$ids = [];
 		foreach ( $res as $row ) {

@@ -14,18 +14,19 @@ use MediaWiki\User\UserIdentity;
  * MediaWiki:SaintapediaFeedback-access). One group name per line.
  *
  * Special tokens:
- * - user — any persistent registered account (not temp / IP) [default]
- * - *    — everyone including anons (rarely appropriate)
- * - autoconfirmed, sysop, editor, … — normal MediaWiki groups
+ * - sysop — administrators [default; matches saintapediafeedback-view]
+ * - user  — any persistent named account (not temp / IP); opt-in option C
+ * - *     — everyone including anons (rarely appropriate)
+ * - autoconfirmed, editor, … — normal MediaWiki groups
  *
  * Lines starting with # or ; and blank lines are ignored.
  *
- * Default when the page is missing or empty: [ 'user' ].
+ * Default when the page is missing or empty: [ 'sysop' ].
  * Users who hold saintapediafeedback-view via LocalSettings always pass.
  */
 class FeedbackAccess {
 
-	public const DEFAULT_GROUPS = [ 'user' ];
+	public const DEFAULT_GROUPS = [ 'sysop' ];
 
 	public const CACHE_KEY = 'saintapediafeedback-access-groups';
 
