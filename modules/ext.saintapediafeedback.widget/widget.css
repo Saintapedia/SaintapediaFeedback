@@ -27,11 +27,15 @@
 
 /* ── Floating Action Button ─────────────────────────────────────────────── */
 
-.spf-fab {
+.spf-fab-wrap {
 	position: fixed;
 	bottom: 24px;
 	right: 24px;
 	z-index: 1001;
+}
+
+.spf-fab {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -46,6 +50,78 @@
 	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 	transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
 	white-space: nowrap;
+}
+
+.spf-fab-hide {
+	position: absolute;
+	top: -8px;
+	left: -8px;
+	z-index: 1;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 1px solid #c8ccd1;
+	border-radius: 50%;
+	background: #fff;
+	color: #54595d;
+	font-size: 1rem;
+	line-height: 1;
+	cursor: pointer;
+	box-shadow: 0 1px 4px rgba( 0, 0, 0, 0.15 );
+}
+
+.spf-fab-hide:hover {
+	background: #f8f9fa;
+	color: #202122;
+}
+
+.spf-fab-tab {
+	position: fixed;
+	right: 0;
+	bottom: 28%;
+	z-index: 1001;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 56px;
+	padding: 0;
+	border: none;
+	border-radius: 8px 0 0 8px;
+	background: #3875d7;
+	color: #fff;
+	cursor: pointer;
+	box-shadow: 0 2px 10px rgba( 0, 0, 0, 0.2 );
+}
+
+.spf-fab-tab .spf-fab-icon {
+	width: 18px;
+	height: 18px;
+}
+
+.spf-container.spf-fab--hidden .spf-public-counts,
+.spf-container.spf-fab--hidden .spf-fab-wrap {
+	display: none;
+}
+
+.spf-container.spf-fab--hidden .spf-fab-tab {
+	display: flex;
+}
+
+.spf-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect( 0, 0, 0, 0 );
+	white-space: nowrap;
+	border: 0;
+}
+
+body.spf-panel-open {
+	overflow: hidden;
 }
 
 .spf-fab:hover {
@@ -451,12 +527,12 @@
 		width: 100%;
 		max-width: 100%;
 		border-radius: 16px 16px 0 0;
+		padding-bottom: env( safe-area-inset-bottom, 0px );
 	}
 
-	.spf-fab {
-		bottom: 16px;
+	.spf-fab-wrap {
+		bottom: calc( 16px + env( safe-area-inset-bottom, 0px ) );
 		right: 16px;
-		padding: 12px 16px;
 	}
 
 	.spf-fab-label {
@@ -470,4 +546,21 @@
 		justify-content: center;
 		border-radius: 50%;
 	}
+
+	.spf-fab-hide {
+		width: 28px;
+		height: 28px;
+		top: -6px;
+		left: -6px;
+	}
+
+	.spf-fab-tab {
+		bottom: calc( 28% + env( safe-area-inset-bottom, 0px ) );
+		width: 40px;
+		height: 64px;
+	}
+}
+
+.spf-mode-enterprise .spf-fab-tab {
+	background: #1d4f2a;
 }

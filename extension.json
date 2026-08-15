@@ -55,6 +55,9 @@
 			"styles": [ "widget.css" ],
 			"messages": [
 				"saintapediafeedback-button-label",
+				"saintapediafeedback-hide",
+				"saintapediafeedback-show",
+				"saintapediafeedback-hidden",
 				"saintapediafeedback-panel-title",
 				"saintapediafeedback-panel-subtitle",
 				"saintapediafeedback-category-inaccurate",

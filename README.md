@@ -4,7 +4,7 @@ MediaWiki extension: floating **“Improve this article”** widget for readers,
 
 | Audience | What they get |
 |----------|----------------|
-| **Readers** | Submit without an account (public mode), with hCaptcha, rate limits, and block checks |
+| **Readers** | Submit without an account (public mode), with hCaptcha, rate limits, and block checks. Hide the floating button (× or long-press) for this tab; restore from the screen-edge tab or **Tools → Improve this article** |
 | **Editors** | Dashboard + toolbox link (`saintapediafeedback-view`, granted to **sysop** by default) |
 
 Requires **MediaWiki ≥ 1.39**.
@@ -228,7 +228,7 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 
 ## Version
 
-**1.6.0** — production hardening: default dashboard access is `sysop` (option C is opt-in); contact email shown to managers; rate-limit lock; export `Cache-Control: private, no-store`; `log_note` schema fix; Special:SpecialPages title; watcher Echo scan capped at 100.
+**1.6.0** — production hardening: default dashboard access is `sysop` (option C is opt-in); contact email shown to managers; rate-limit lock; export `Cache-Control: private, no-store`; `log_note` schema fix; Special:SpecialPages title; watcher Echo scan capped at 100. Readers can hide the floating button (session + long-press or ×); restore via the edge tab or Tools → Improve this article.
 
 **1.5.2** — audit actors use persistent (named) accounts only; access copy says named accounts, not “all logged-in”.
 
