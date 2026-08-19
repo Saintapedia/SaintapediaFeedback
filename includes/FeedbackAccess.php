@@ -306,6 +306,34 @@ class FeedbackAccess {
 	}
 
 	/**
+	 * Normalize one wiki-page line: skip blank/comment-only lines, strip a
+	 * leading wiki-list "*" marker (keeping a lone "*" as the everyone
+	 * token) and an inline "#" comment. Returns null when the line has
+	 * nothing left after normalization.
+	 *
+	 * Pure; shared by parseGroupList() and FeedbackWikiConfig's line
+	 * parsing so both accept the same on-wiki page conventions.
+	 */
+	public static function normalizeLine( string $line ): ?string {
+		$line = trim( $line );
+		if ( $line === '' || $line[0] === '#' || $line[0] === ';' ) {
+			return null;
+		}
+		// Allow "* user" wiki-list markup. A line that is only "*" (the
+		// documented everyone-including-anons token) must survive the strip.
+		$raw = $line;
+		$line = preg_replace( '/^\*+\s*/', '', $line );
+		$line = trim( $line );
+		if ( $line === '' && preg_match( '/^\*+$/', $raw ) ) {
+			$line = '*';
+		}
+		if ( strpos( $line, '#' ) !== false ) {
+			$line = trim( substr( $line, 0, strpos( $line, '#' ) ) );
+		}
+		return $line === '' ? null : $line;
+	}
+
+	/**
 	 * Parse wiki page body into group tokens (pure; unit-testable).
 	 *
 	 * @return string[]
@@ -313,25 +341,10 @@ class FeedbackAccess {
 	public static function parseGroupList( string $text ): array {
 		$groups = [];
 		foreach ( preg_split( '/\r\n|\r|\n/', $text ) as $line ) {
-			$line = trim( $line );
-			if ( $line === '' || $line[0] === '#' || $line[0] === ';' ) {
-				continue;
+			$normalized = self::normalizeLine( $line );
+			if ( $normalized !== null ) {
+				$groups[] = $normalized;
 			}
-			// Allow "* user" wiki-list markup. A line that is only "*" (the
-			// documented everyone-including-anons token) must survive the strip.
-			$raw = $line;
-			$line = preg_replace( '/^\*+\s*/', '', $line );
-			$line = trim( $line );
-			if ( $line === '' && preg_match( '/^\*+$/', $raw ) ) {
-				$line = '*';
-			}
-			if ( strpos( $line, '#' ) !== false ) {
-				$line = trim( substr( $line, 0, strpos( $line, '#' ) ) );
-			}
-			if ( $line === '' ) {
-				continue;
-			}
-			$groups[] = $line;
 		}
 		$out = [];
 		foreach ( $groups as $g ) {

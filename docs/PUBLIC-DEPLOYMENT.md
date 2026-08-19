@@ -74,8 +74,11 @@ user
 ```
 
 Don't set this to `*` (everyone, including anons) on a public wiki — that
-hands dashboard access, bulk-process, and JSON export to anyone who loads the
-page, including the raw comment/category text of every submission.
+hands dashboard access and bulk-process to anyone who loads the page,
+including the raw comment/category text of every submission. It does **not**
+by itself grant bulk JSON export or contact-email visibility — those are
+separate rights (`saintapediafeedback-export`, `saintapediafeedback-viewemail`,
+each defaulting to sysop) with their own access pages, described below.
 
 A block on a user revokes dashboard access immediately, even for someone who
 otherwise matches `sysop` or the access page — you do not need to also strip
@@ -95,18 +98,21 @@ Before enabling it on a public site:
   you're now collecting PII from anonymous visitors.
 - Have a retention/deletion plan for old rows, since nothing in the extension
   ages out old feedback automatically.
-- Remember dashboard *list* queries already omit this column by design
-  (`FeedbackStore::exportDashboard` / list view don't select it) — but the
-  per-item detail view and JSON export do include it, so anyone with
-  dashboard access can see it.
+- List queries never select this column (`FeedbackStore::exportDashboard` /
+  the dashboard list view don't project it), and the **JSON export does not
+  include it either** — export omits contact email and IP hash the same way
+  the dashboard list does. The only place it's ever shown is the per-row
+  detail view on the dashboard, and only to someone who passes the separate
+  `saintapediafeedback-viewemail` check (below) — dashboard access alone is
+  no longer enough to see it.
 
 If you don't need it, leave it off — it's the lowest-friction privacy choice.
 
-If you *do* need it and also plan to widen dashboard access beyond sysop
-(§3), consider locking the email field down separately: the
-`saintapediafeedback-viewemail` right / `MediaWiki:SaintapediaFeedback-email-access`
-page control who sees the address independently of who can triage feedback
-— see [README.md § Locking down the contact-email field separately](../README.md#locking-down-the-contact-email-field-separately).
+If you *do* enable it, decide who should pass `saintapediafeedback-viewemail`
+/ `MediaWiki:SaintapediaFeedback-email-access` — that check, not general
+dashboard access, is what actually controls visibility now. See
+[README.md § Locking down the contact-email field separately](../README.md#locking-down-the-contact-email-field-separately)
+for the two-step process if you want to restrict it below the sysop default.
 
 ## 5. Set who gets notified
 

@@ -5,7 +5,7 @@ MediaWiki extension: floating **“Improve this article”** widget for readers,
 | Audience | What they get |
 |----------|----------------|
 | **Readers** | Submit without an account (public mode), with hCaptcha, rate limits, and block checks. Hide the floating button (× or long-press) for this tab; restore from the screen-edge tab or **Tools → Improve this article** |
-| **Editors** | Dashboard + toolbox link (`saintapediafeedback-view`, granted to **sysop** by default) |
+| **Editors** | Dashboard + toolbox link (`saintapediafeedback-view`, granted to **sysop** by default). Seeing the contact email and downloading the JSON export each need their own separate right (`saintapediafeedback-viewemail`, `saintapediafeedback-export`), also sysop by default |
 
 Requires **MediaWiki ≥ 1.39**.
 
@@ -163,7 +163,9 @@ Anyone who has the **`saintapediafeedback-view`** right **or** matches a group o
 
 | Right | Default | Meaning |
 |-------|---------|---------|
-| `saintapediafeedback-view` | sysop | Allowed if not blocked (plus groups on the access page) |
+| `saintapediafeedback-view` | sysop | Dashboard access — view/process feedback. Allowed if not blocked (plus groups on the access page) |
+| `saintapediafeedback-viewemail` | sysop | See the contact-email field, independent of dashboard access — see below |
+| `saintapediafeedback-export` | sysop | Download the JSON export, independent of dashboard access — see below |
 
 ### Locking down the contact-email field separately
 
@@ -186,9 +188,24 @@ $wgGroupPermissions['sysop']['saintapediafeedback-viewemail'] = true;
 ```
 
 Use this when you want a broad editor group to see and process feedback, but
-only a smaller trusted set (or nobody) to see whatever email address a
-reader typed in. A user who fails this check simply sees the row with no
-contact-email line — everything else on the dashboard is unaffected.
+only a smaller trusted set to see whatever email address a reader typed in.
+A user who fails this check simply sees the row with no contact-email
+line — everything else on the dashboard is unaffected.
+
+**Getting to "nobody" takes two steps, not one.** An empty or missing
+groups list/page isn't "deny everyone" — it falls back to the `sysop`
+default (`FeedbackAccess::DEFAULT_EMAIL_GROUPS`), and `sysop` also holds
+`saintapediafeedback-viewemail` directly via `extension.json`'s
+`GroupPermissions`, independent of the group-list check. So:
+
+1. Remove the right from sysop in `LocalSettings.php`:
+   `$wgGroupPermissions['sysop']['saintapediafeedback-viewemail'] = false;`
+2. And point the group list at something no real user group matches — a
+   made-up token like `no-one` on `MediaWiki:SaintapediaFeedback-email-access`
+   works today (it isn't `*`, isn't `user`, and matches no actual MediaWiki
+   group), or a real but nonexistent local group name.
+
+Skipping either step alone still leaves sysop able to see it.
 
 ### Locking down bulk export separately
 
@@ -228,8 +245,14 @@ page.
 
 Page names are each renameable via a `*Page` config var (e.g.
 `$wgSaintapediaFeedbackRateLimitPage`), same convention as
-`SaintapediaFeedbackAccessPage`. `#`/`;` lines are treated as comments, same
-as the access pages.
+`SaintapediaFeedbackAccessPage`. Line parsing is identical to the access
+pages: `#`/`;` lines and blank lines are ignored, a leading wiki-list `* `
+marker is stripped, and inline `# comment` text after a value is stripped
+too — so `* false`, `* 10 # temporary`, and `Admin # notify lead editor` all
+parse the way you'd expect from writing an access page. For a `true`/`false`
+setting, the first non-comment line is matched case-insensitively against
+`true`/`yes`/`on`/`1` and `false`/`no`/`off`/`0`; anything else (including a
+typo) is treated as "no override" and falls back to the PHP value.
 
 **What deliberately did *not* move on-wiki:** the hCaptcha secret key and the
 LLM webhook bearer token. `MediaWiki:` pages are readable by anyone even
