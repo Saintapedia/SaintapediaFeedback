@@ -59,7 +59,12 @@ class FeedbackNotifier {
 	private static function collectRecipientIds( Config $config, Title $title, User $agent ): array {
 		$ids = [];
 
-		$names = $config->get( 'SaintapediaFeedbackNotifyUsers' );
+		$phpNames = $config->get( 'SaintapediaFeedbackNotifyUsers' );
+		$names = FeedbackWikiConfig::effectiveList(
+			'SaintapediaFeedbackNotifyUsersPage',
+			'SaintapediaFeedback-notify-users',
+			is_array( $phpNames ) ? $phpNames : []
+		);
 		if ( is_array( $names ) ) {
 			$userFactory = MediaWikiServices::getInstance()->getUserFactory();
 			foreach ( $names as $name ) {

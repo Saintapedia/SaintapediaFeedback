@@ -7,6 +7,7 @@ use MediaWiki\Extension\SaintapediaFeedback\CaptchaGate;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
+use MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\TitleFactory;
 use Wikimedia\ParamValidator\ParamValidator;
@@ -76,9 +77,14 @@ class ApiSubmitFeedback extends ApiBase {
 			'sha256',
 			$ip . MediaWikiServices::getInstance()->getMainConfig()->get( 'SecretKey' )
 		);
-		$limit = $mode === 'enterprise'
+		$phpLimit = $mode === 'enterprise'
 			? $config->get( 'SaintapediaFeedbackEnterpriseRateLimit' )
 			: $config->get( 'SaintapediaFeedbackRateLimit' );
+		$limit = FeedbackWikiConfig::effectiveInt(
+			'SaintapediaFeedbackRateLimitPage',
+			'SaintapediaFeedback-ratelimit',
+			(int)$phpLimit
+		);
 
 		// Sanitize free text
 		$comment = $params['comment'] ?? null;

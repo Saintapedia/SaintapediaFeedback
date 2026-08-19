@@ -30,7 +30,10 @@ Raw IPs are **not** stored (only a hash for rate limiting). Contact email may be
 - `Special:SaintapediaFeedback/export` — current dashboard filters as JSON  
 - `Special:SaintapediaFeedback/export/<pageid>` — one page  
 
-Requires `saintapediafeedback-view`. Response shape:
+Requires dashboard access (`saintapediafeedback-view` / access page) **and**
+the separate `saintapediafeedback-export` right / `MediaWiki:SaintapediaFeedback-export-access`
+page — a user who can open the dashboard but lacks the export right gets a
+permission error on these routes. Response shape:
 
 ```json
 {
@@ -114,7 +117,7 @@ The webhook is provider-agnostic. This repo ships a SpaceXAI sidecar in [`sideca
 
 ## Safe defaults
 
-- Export only for users with `saintapediafeedback-view`.  
+- Export only for users with dashboard access **and** the `saintapediafeedback-export` right.  
 - Never export `fb_ip_hash` or contact email to a third-party model by default.  
 - Cap batch size (store already limits).  
 - Idempotency via `fb_llm_processed`.

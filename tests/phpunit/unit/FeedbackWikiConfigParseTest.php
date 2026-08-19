@@ -1,0 +1,61 @@
+<?php
+
+namespace MediaWiki\Extension\SaintapediaFeedback\Tests\Unit;
+
+use MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig::parseLines
+ * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig::parseBoolToken
+ */
+class FeedbackWikiConfigParseTest extends TestCase {
+
+	public function testParseLinesIgnoresCommentsAndBlanks(): void {
+		$text = <<<TEXT
+# comment
+5
+
+; old style comment
+10
+TEXT;
+		$this->assertSame( [ '5', '10' ], FeedbackWikiConfig::parseLines( $text ) );
+	}
+
+	public function testParseLinesStripsWikiListMarkup(): void {
+		$this->assertSame( [ 'false' ], FeedbackWikiConfig::parseLines( '* false' ) );
+		$this->assertSame( [ '10' ], FeedbackWikiConfig::parseLines( "* 10\n" ) );
+	}
+
+	public function testParseLinesStripsInlineComments(): void {
+		$this->assertSame( [ 'true' ], FeedbackWikiConfig::parseLines( 'true # temporary override' ) );
+		$this->assertSame( [ 'Admin' ], FeedbackWikiConfig::parseLines( 'Admin # notify lead editor' ) );
+	}
+
+	public function testParseLinesDeduplicates(): void {
+		$this->assertSame( [ 'Admin', 'EditorBot' ], FeedbackWikiConfig::parseLines( "Admin\nEditorBot\nAdmin\n" ) );
+	}
+
+	public function testParseLinesEmptyReturnsEmpty(): void {
+		$this->assertSame( [], FeedbackWikiConfig::parseLines( '' ) );
+		$this->assertSame( [], FeedbackWikiConfig::parseLines( "# only comments\n" ) );
+	}
+
+	public function testParseBoolTokenRecognizesTrueValues(): void {
+		foreach ( [ 'true', 'TRUE', 'yes', 'on', '1' ] as $value ) {
+			$this->assertTrue( FeedbackWikiConfig::parseBoolToken( $value ), "Expected true for '$value'" );
+		}
+	}
+
+	public function testParseBoolTokenRecognizesFalseValues(): void {
+		foreach ( [ 'false', 'FALSE', 'no', 'off', '0' ] as $value ) {
+			$this->assertFalse( FeedbackWikiConfig::parseBoolToken( $value ), "Expected false for '$value'" );
+		}
+	}
+
+	public function testParseBoolTokenUnrecognizedReturnsNull(): void {
+		$this->assertNull( FeedbackWikiConfig::parseBoolToken( 'maybe' ) );
+		$this->assertNull( FeedbackWikiConfig::parseBoolToken( '' ) );
+		$this->assertNull( FeedbackWikiConfig::parseBoolToken( '2' ) );
+	}
+}
