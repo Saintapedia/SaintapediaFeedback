@@ -29,7 +29,12 @@ class TalkLinkPoster {
 	): bool {
 		try {
 			$config = MediaWikiServices::getInstance()->getMainConfig();
-			if ( !$config->get( 'SaintapediaFeedbackEnableTalkLink' ) ) {
+			$enableTalkLink = FeedbackWikiConfig::effectiveBool(
+				'SaintapediaFeedbackEnableTalkLinkPage',
+				'SaintapediaFeedback-enable-talklink',
+				(bool)$config->get( 'SaintapediaFeedbackEnableTalkLink' )
+			);
+			if ( !$enableTalkLink ) {
 				return false;
 			}
 

@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.6.0",
+	"version": "1.7.0",
 	"author": [ "Saintapedia contributors" ],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
@@ -31,11 +31,15 @@
 		}
 	},
 	"AvailableRights": [
-		"saintapediafeedback-view"
+		"saintapediafeedback-view",
+		"saintapediafeedback-viewemail",
+		"saintapediafeedback-export"
 	],
 	"GroupPermissions": {
 		"sysop": {
-			"saintapediafeedback-view": true
+			"saintapediafeedback-view": true,
+			"saintapediafeedback-viewemail": true,
+			"saintapediafeedback-export": true
 		}
 	},
 	"Hooks": {
@@ -134,6 +138,42 @@
 		"SaintapediaFeedbackAccessGroups": {
 			"value": [ "sysop" ],
 			"description": "Default groups when the access page is missing or empty. Default is sysop (safe for public wikis). Set to ['user'] or put 'user' on the access page for option C (named accounts, not temps)."
+		},
+		"SaintapediaFeedbackEmailAccessPage": {
+			"value": "SaintapediaFeedback-email-access",
+			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to see the optional contact-email field. Separate from the dashboard access page/right so email can be locked to a smaller set than general feedback access. Missing/empty page falls back to EmailAccessGroups."
+		},
+		"SaintapediaFeedbackEmailAccessGroups": {
+			"value": [ "sysop" ],
+			"description": "Default groups allowed to see the contact-email field when the email access page is missing or empty. Default is sysop, independent of SaintapediaFeedbackAccessGroups."
+		},
+		"SaintapediaFeedbackExportAccessPage": {
+			"value": "SaintapediaFeedback-export-access",
+			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to download the JSON export. Separate from the dashboard access page/right so bulk export can be locked to a smaller set than general feedback access. Missing/empty page falls back to ExportAccessGroups."
+		},
+		"SaintapediaFeedbackExportAccessGroups": {
+			"value": [ "sysop" ],
+			"description": "Default groups allowed to export when the export access page is missing or empty. Default is sysop, independent of SaintapediaFeedbackAccessGroups."
+		},
+		"SaintapediaFeedbackRateLimitPage": {
+			"value": "SaintapediaFeedback-ratelimit",
+			"description": "MediaWiki-namespace page (DB key without prefix) holding a single integer that overrides the mode-appropriate rate limit (SaintapediaFeedbackRateLimit / EnterpriseRateLimit) without a deploy. Missing/empty/non-numeric page falls back to the PHP config."
+		},
+		"SaintapediaFeedbackNotifyUsersPage": {
+			"value": "SaintapediaFeedback-notify-users",
+			"description": "MediaWiki-namespace page (DB key without prefix), one username per line, overriding SaintapediaFeedbackNotifyUsers without a deploy. Missing/empty page falls back to the PHP config."
+		},
+		"SaintapediaFeedbackRequireCaptchaPage": {
+			"value": "SaintapediaFeedback-require-captcha",
+			"description": "MediaWiki-namespace page (DB key without prefix) holding true/false to override SaintapediaFeedbackRequireCaptcha (and the mode-based auto default) without a deploy. Security-sensitive: editable by anyone with editinterface, not gated by code review. Missing/empty/unrecognized page falls back to the PHP config."
+		},
+		"SaintapediaFeedbackShowPublicCountsPage": {
+			"value": "SaintapediaFeedback-show-public-counts",
+			"description": "MediaWiki-namespace page (DB key without prefix) holding true/false to override SaintapediaFeedbackShowPublicCounts without a deploy. Missing/empty/unrecognized page falls back to the PHP config."
+		},
+		"SaintapediaFeedbackEnableTalkLinkPage": {
+			"value": "SaintapediaFeedback-enable-talklink",
+			"description": "MediaWiki-namespace page (DB key without prefix) holding true/false to override SaintapediaFeedbackEnableTalkLink without a deploy. Missing/empty/unrecognized page falls back to the PHP config."
 		},
 		"SaintapediaFeedbackNotifyWatchers": {
 			"value": true,

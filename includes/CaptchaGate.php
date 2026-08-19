@@ -36,10 +36,15 @@ class CaptchaGate {
 	 */
 	public static function isCaptchaEnabled( Config $config ): bool {
 		$flag = $config->get( 'SaintapediaFeedbackRequireCaptcha' );
-		if ( $flag === null ) {
-			return $config->get( 'SaintapediaFeedbackMode' ) !== 'enterprise';
-		}
-		return (bool)$flag;
+		$phpValue = $flag === null
+			? $config->get( 'SaintapediaFeedbackMode' ) !== 'enterprise'
+			: (bool)$flag;
+
+		return FeedbackWikiConfig::effectiveBool(
+			'SaintapediaFeedbackRequireCaptchaPage',
+			'SaintapediaFeedback-require-captcha',
+			$phpValue
+		);
 	}
 
 	/**

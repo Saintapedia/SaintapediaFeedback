@@ -7,6 +7,7 @@ use Html;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackFilters;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
+use MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig;
 use MediaWiki\Extension\SaintapediaFeedback\TalkLinkPoster;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\TitleFactory;
@@ -84,8 +85,11 @@ class SpecialFeedback extends SpecialPage {
 
 		$this->checkPermissions();
 
-		// JSON export routes (editors only — same right as this page)
+		// JSON export routes — dashboard access plus a separate export right/group
 		if ( $par === 'export' || strpos( $par, 'export/' ) === 0 ) {
+			if ( !FeedbackAccess::userCanExport( $this->getUser() ) ) {
+				throw new PermissionsError( 'saintapediafeedback-export' );
+			}
 			$this->handleExport( $par );
 			return;
 		}
@@ -227,13 +231,15 @@ class SpecialFeedback extends SpecialPage {
 
 		$out->addHTML( $this->renderPagination( $filters, $offset, $limit, $total ) );
 
-		$exportUrl = $this->getPageTitle( 'export' )->getLocalURL( $this->filtersToQuery( $filters ) );
-		$out->addHTML( '<p class="spf-export-link">' .
-			$out->msg( 'saintapediafeedback-export-link' )->rawParams(
-				'<a href="' . htmlspecialchars( $exportUrl ) . '">' .
-				$out->msg( 'saintapediafeedback-export-link-text' )->escaped() . '</a>'
-			)->parse() .
-		'</p>' );
+		if ( FeedbackAccess::userCanExport( $this->getUser() ) ) {
+			$exportUrl = $this->getPageTitle( 'export' )->getLocalURL( $this->filtersToQuery( $filters ) );
+			$out->addHTML( '<p class="spf-export-link">' .
+				$out->msg( 'saintapediafeedback-export-link' )->rawParams(
+					'<a href="' . htmlspecialchars( $exportUrl ) . '">' .
+					$out->msg( 'saintapediafeedback-export-link-text' )->escaped() . '</a>'
+				)->parse() .
+			'</p>' );
+		}
 	}
 
 	private function showPageFeedback( int $pageId ): void {
@@ -285,13 +291,15 @@ class SpecialFeedback extends SpecialPage {
 
 		$out->addHTML( $this->renderPagination( [], $offset, $limit, $total, (string)$pageId ) );
 
-		$exportUrl = $this->getPageTitle( 'export/' . $pageId )->getLocalURL();
-		$out->addHTML( '<p class="spf-export-link">' .
-			$out->msg( 'saintapediafeedback-export-link' )->rawParams(
-				'<a href="' . htmlspecialchars( $exportUrl ) . '">' .
-				$out->msg( 'saintapediafeedback-export-link-text' )->escaped() . '</a>'
-			)->parse() .
-		'</p>' );
+		if ( FeedbackAccess::userCanExport( $this->getUser() ) ) {
+			$exportUrl = $this->getPageTitle( 'export/' . $pageId )->getLocalURL();
+			$out->addHTML( '<p class="spf-export-link">' .
+				$out->msg( 'saintapediafeedback-export-link' )->rawParams(
+					'<a href="' . htmlspecialchars( $exportUrl ) . '">' .
+					$out->msg( 'saintapediafeedback-export-link-text' )->escaped() . '</a>'
+				)->parse() .
+			'</p>' );
+		}
 	}
 
 	/**
@@ -357,7 +365,11 @@ class SpecialFeedback extends SpecialPage {
 		if (
 			$action === 'actioned'
 			&& $request->getCheck( 'spftalk' )
-			&& MediaWikiServices::getInstance()->getMainConfig()->get( 'SaintapediaFeedbackEnableTalkLink' )
+			&& FeedbackWikiConfig::effectiveBool(
+				'SaintapediaFeedbackEnableTalkLinkPage',
+				'SaintapediaFeedback-enable-talklink',
+				(bool)MediaWikiServices::getInstance()->getMainConfig()->get( 'SaintapediaFeedbackEnableTalkLink' )
+			)
 		) {
 			$article = $this->titleFromId( $pageId );
 			if ( !$article ) {
@@ -938,6 +950,9 @@ class SpecialFeedback extends SpecialPage {
 		if ( !$enable || !$rows ) {
 			return [];
 		}
+		if ( !FeedbackAccess::userCanViewEmail( $this->getUser() ) ) {
+			return [];
+		}
 		$ids = [];
 		foreach ( $rows as $row ) {
 			$ids[] = (int)$row->fb_id;
@@ -1103,9 +1118,13 @@ class SpecialFeedback extends SpecialPage {
 					'placeholder' => $this->msg( 'saintapediafeedback-resolution-summary-placeholder' )->text(),
 					'size' => 40,
 				] );
-				$talkEnabled = \MediaWiki\MediaWikiServices::getInstance()
-					->getMainConfig()
-					->get( 'SaintapediaFeedbackEnableTalkLink' );
+				$talkEnabled = FeedbackWikiConfig::effectiveBool(
+					'SaintapediaFeedbackEnableTalkLinkPage',
+					'SaintapediaFeedback-enable-talklink',
+					(bool)\MediaWiki\MediaWikiServices::getInstance()
+						->getMainConfig()
+						->get( 'SaintapediaFeedbackEnableTalkLink' )
+				);
 				if ( $talkEnabled ) {
 					$html .= Html::rawElement( 'label', [ 'class' => 'spf-public-check' ],
 						Html::input( 'spftalk', '1', 'checkbox' ) . ' '

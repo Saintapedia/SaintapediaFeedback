@@ -44,8 +44,14 @@ class Hooks {
 		$enableEmail = $mode === 'enterprise' || $config->get( 'SaintapediaFeedbackEnableEmail' );
 		$captcha = CaptchaGate::prepareOutput( $out, $config );
 
+		$showPublicCounts = FeedbackWikiConfig::effectiveBool(
+			'SaintapediaFeedbackShowPublicCountsPage',
+			'SaintapediaFeedback-show-public-counts',
+			(bool)$config->get( 'SaintapediaFeedbackShowPublicCounts' )
+		);
+
 		$publicCounts = [ 'open' => 0, 'resolved' => 0, 'total' => 0 ];
-		if ( $config->get( 'SaintapediaFeedbackShowPublicCounts' ) ) {
+		if ( $showPublicCounts ) {
 			try {
 				$store = MediaWikiServices::getInstance()->getService( 'SaintapediaFeedback.FeedbackStore' );
 				$publicCounts = $store->getPageCounts( $title->getArticleID() );
@@ -62,7 +68,7 @@ class Hooks {
 			'spfRequireCaptcha'       => $captcha['requireCaptcha'],
 			'spfCaptchaMisconfigured' => $captcha['captchaMisconfigured'],
 			'spfHCaptchaSiteKey'      => $captcha['hCaptchaSiteKey'],
-			'spfShowPublicCounts'     => (bool)$config->get( 'SaintapediaFeedbackShowPublicCounts' ),
+			'spfShowPublicCounts'     => $showPublicCounts,
 			'spfCountOpen'            => (int)$publicCounts['open'],
 			'spfCountResolved'        => (int)$publicCounts['resolved'],
 			'spfCountTotal'           => (int)$publicCounts['total'],
@@ -167,7 +173,8 @@ class Hooks {
 	}
 
 	/**
-	 * Invalidate access-group cache when MediaWiki:SaintapediaFeedback-access is edited.
+	 * Invalidate the relevant cache when any access-config or on-wiki
+	 * operational-setting page is edited.
 	 */
 	public static function onPageSaveComplete(
 		$wikiPage,
@@ -177,11 +184,11 @@ class Hooks {
 		$revisionRecord,
 		$editResult
 	): void {
-		self::maybeInvalidateAccessCache( $wikiPage->getTitle() );
+		self::maybeInvalidateConfigCaches( $wikiPage->getTitle() );
 	}
 
 	/**
-	 * Deleting the access page must reset to PHP defaults immediately (not wait TTL).
+	 * Deleting a config page must reset to PHP defaults immediately (not wait TTL).
 	 */
 	public static function onPageDeleteComplete(
 		$page,
@@ -201,11 +208,12 @@ class Hooks {
 			// Older signatures sometimes pass Title-like objects
 			$title = Title::makeTitleSafe( $page->getNamespace(), $page->getDBkey() );
 		}
-		self::maybeInvalidateAccessCache( $title );
+		self::maybeInvalidateConfigCaches( $title );
 	}
 
 	/**
-	 * Moving/renaming the access page must not leave a stale cache entry.
+	 * Moving/renaming any access-config or on-wiki operational-setting page
+	 * must not leave a stale cache entry.
 	 */
 	public static function onPageMoveComplete(
 		$old,
@@ -216,27 +224,33 @@ class Hooks {
 		$reason,
 		$revision
 	): void {
-		$access = FeedbackAccess::getAccessPageTitle();
-		if ( !$access ) {
-			return;
-		}
+		$targets = [
+			[ FeedbackAccess::getAccessPageTitle(), [ FeedbackAccess::class, 'invalidateCache' ] ],
+			[ FeedbackAccess::getEmailAccessPageTitle(), [ FeedbackAccess::class, 'invalidateEmailCache' ] ],
+			[ FeedbackAccess::getExportAccessPageTitle(), [ FeedbackAccess::class, 'invalidateExportCache' ] ],
+		];
 		foreach ( [ $old, $new ] as $lt ) {
 			try {
 				$t = Title::newFromLinkTarget( $lt );
-				if ( $t && ( $t->equals( $access ) || $t->getPrefixedText() === $access->getPrefixedText() ) ) {
-					FeedbackAccess::invalidateCache();
-					return;
-				}
 			} catch ( \Throwable $e ) {
-				// ignore
+				continue;
 			}
+			if ( !$t ) {
+				continue;
+			}
+			foreach ( $targets as [ $page, $invalidate ] ) {
+				if ( $page && ( $t->equals( $page ) || $t->getPrefixedText() === $page->getPrefixedText() ) ) {
+					$invalidate();
+				}
+			}
+			FeedbackWikiConfig::maybeInvalidate( $t );
 		}
 	}
 
 	/**
 	 * @param \MediaWiki\Title\Title|Title|null $title
 	 */
-	private static function maybeInvalidateAccessCache( $title ): void {
+	private static function maybeInvalidateConfigCaches( $title ): void {
 		if ( !$title ) {
 			return;
 		}
@@ -244,5 +258,14 @@ class Hooks {
 		if ( $access && $title->equals( $access ) ) {
 			FeedbackAccess::invalidateCache();
 		}
+		$emailAccess = FeedbackAccess::getEmailAccessPageTitle();
+		if ( $emailAccess && $title->equals( $emailAccess ) ) {
+			FeedbackAccess::invalidateEmailCache();
+		}
+		$exportAccess = FeedbackAccess::getExportAccessPageTitle();
+		if ( $exportAccess && $title->equals( $exportAccess ) ) {
+			FeedbackAccess::invalidateExportCache();
+		}
+		FeedbackWikiConfig::maybeInvalidate( $title );
 	}
 }
