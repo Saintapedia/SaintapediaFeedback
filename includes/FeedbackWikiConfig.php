@@ -61,11 +61,11 @@ class FeedbackWikiConfig {
 	 * cache/DB exception is a read failure so security knobs can fail
 	 * closed instead of treating the overlay as empty.
 	 *
-	 * @return array{0: string, 1: bool} [ text, readFailed ]
+	 * @return array{0: string, 1: bool, 2: string} [ text, readFailed, error ]
 	 */
 	private static function loadText( string $pageConfigKey, string $pageDefault ): array {
 		if ( !self::servicesAvailable() ) {
-			return [ '', false ];
+			return [ '', false, '' ];
 		}
 		try {
 			$pageName = self::pageName( $pageConfigKey, $pageDefault );
@@ -90,14 +90,36 @@ class FeedbackWikiConfig {
 					return trim( (string)$text );
 				}
 			);
-			return [ (string)$text, false ];
+			return [ (string)$text, false, '' ];
 		} catch ( \Throwable $e ) {
-			if ( function_exists( 'wfLogWarning' ) ) {
-				wfLogWarning(
-					"SaintapediaFeedback: wiki-config read failed for {$pageConfigKey}; failing closed. {$e->getMessage()}"
-				);
-			}
-			return [ '', true ];
+			return [ '', true, $e->getMessage() ];
+		}
+	}
+
+	/**
+	 * Warning text for an overlay read failure. Pure; unit-testable.
+	 * Only knobs that pass $onReadError (captcha) actually fail closed.
+	 */
+	public static function overlayReadFailureMessage(
+		string $pageConfigKey,
+		bool $failClosed,
+		string $detail = ''
+	): string {
+		$how = $failClosed ? 'failing closed' : 'using PHP value';
+		$msg = "SaintapediaFeedback: wiki-config read failed for {$pageConfigKey}; {$how}.";
+		if ( $detail !== '' ) {
+			$msg .= ' ' . $detail;
+		}
+		return $msg;
+	}
+
+	private static function logOverlayReadFailure(
+		string $pageConfigKey,
+		bool $failClosed,
+		string $detail
+	): void {
+		if ( function_exists( 'wfLogWarning' ) ) {
+			wfLogWarning( self::overlayReadFailureMessage( $pageConfigKey, $failClosed, $detail ) );
 		}
 	}
 
@@ -167,7 +189,10 @@ class FeedbackWikiConfig {
 		bool $phpValue,
 		?bool $onReadError = null
 	): bool {
-		[ $text, $readFailed ] = self::loadText( $pageConfigKey, $pageDefault );
+		[ $text, $readFailed, $error ] = self::loadText( $pageConfigKey, $pageDefault );
+		if ( $readFailed ) {
+			self::logOverlayReadFailure( $pageConfigKey, $onReadError !== null, $error );
+		}
 		return self::resolveBool( $text, $phpValue, $readFailed, $onReadError );
 	}
 
@@ -189,14 +214,18 @@ class FeedbackWikiConfig {
 
 	/** Effective int: on-wiki override wins when the page holds a non-negative integer. */
 	public static function effectiveInt( string $pageConfigKey, string $pageDefault, int $phpValue ): int {
-		[ $text, $readFailed ] = self::loadText( $pageConfigKey, $pageDefault );
+		[ $text, $readFailed, $error ] = self::loadText( $pageConfigKey, $pageDefault );
+		if ( $readFailed ) {
+			self::logOverlayReadFailure( $pageConfigKey, false, $error );
+		}
 		return self::resolveInt( $text, $phpValue, $readFailed );
 	}
 
 	/** Effective list (e.g. usernames): on-wiki override wins when the page has any lines. */
 	public static function effectiveList( string $pageConfigKey, string $pageDefault, array $phpValue ): array {
-		[ $text, $readFailed ] = self::loadText( $pageConfigKey, $pageDefault );
+		[ $text, $readFailed, $error ] = self::loadText( $pageConfigKey, $pageDefault );
 		if ( $readFailed ) {
+			self::logOverlayReadFailure( $pageConfigKey, false, $error );
 			return $phpValue;
 		}
 		$lines = self::parseLines( $text );
