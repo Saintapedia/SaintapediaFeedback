@@ -191,7 +191,7 @@ class FeedbackWikiConfig {
 	): bool {
 		[ $text, $readFailed, $error ] = self::loadText( $pageConfigKey, $pageDefault );
 		if ( $readFailed ) {
-			self::logOverlayReadFailure( $pageConfigKey, $onReadError !== null, $error );
+			self::logOverlayReadFailure( $pageConfigKey, $onReadError === true, $error );
 		}
 		return self::resolveBool( $text, $phpValue, $readFailed, $onReadError );
 	}

@@ -18,7 +18,6 @@ Log in as a user who has the `saintapediafeedback-view` right (usually **Admin**
 | Wiki | Dashboard URL |
 |------|----------------|
 | **Path on any wiki** | `/wiki/Special:SaintapediaFeedback` |
-| **dev.saintapedia.org** | **https://dev.saintapedia.org/wiki/Special:SaintapediaFeedback** |
 | **Local Canasta dev** (`mwdev`, port 8080) | **http://localhost:8080/wiki/Special:SaintapediaFeedback** |
 | Per article | `/wiki/Special:SaintapediaFeedback/<pageid>` |
 | From an article page | Toolbox → **Page feedback** |
