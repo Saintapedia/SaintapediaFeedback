@@ -169,7 +169,10 @@ from your homepage or announcing it anywhere:
   page instead of `LocalSettings.php` — see [README.md § On-wiki config for
   operational settings](../README.md#on-wiki-config-for-operational-settings-no-deploy)
   and the paste-ready operator page
-  [SaintapediaFeedback.wiki](wiki/SaintapediaFeedback.wiki).
+  [Project-SaintapediaFeedback.wiki](wiki/Project-SaintapediaFeedback.wiki)
+  (paste as `Project:SaintapediaFeedback`, not mainspace — the widget’s
+  default namespace list is `[0]`, so a mainspace cheat-sheet would get
+  its own “Improve this article” button).
   Captcha **and** the rate-limit page are security controls: anyone with
   `editinterface` can flip them without a deploy. On a public wiki, leave
   those two pages **blank** and keep the values in LocalSettings. If you do

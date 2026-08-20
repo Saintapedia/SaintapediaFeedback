@@ -1,13 +1,13 @@
 <!--
-  Paste this onto the wiki as [[SaintapediaFeedback]].
-  Source of truth in the extension repo: docs/wiki/SaintapediaFeedback.wiki
-  Requires SaintapediaFeedback 1.7.2+.
+  Paste this onto the wiki as [[Project:SaintapediaFeedback]].
+  Source of truth in the extension repo: docs/wiki/Project-SaintapediaFeedback.wiki
+  Requires SaintapediaFeedback 1.7.3+.
 -->
 = SaintapediaFeedback =
 
 Readers can suggest improvements from the floating '''Improve this article''' button on main-namespace pages. Editors triage that feedback at [[Special:SaintapediaFeedback]].
 
-This page is the operator cheat-sheet: who can see what, which <code>MediaWiki:</code> pages exist, and what belongs in LocalSettings instead.
+This page is the operator cheat-sheet: who can see what, which <code>MediaWiki:</code> pages exist, and what belongs in LocalSettings instead. It lives in the Project namespace so the widget (default namespaces: main only) does not appear on it, and so it stays out of article search / Special:AllPages / random article.
 
 == For readers ==
 
