@@ -356,6 +356,8 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 
 ## Version
 
+**1.7.1** — wiki-config overlay reads fail closed with a warning: captcha stays required if that page cannot be read; contact-email and JSON export deny (instead of 500ing) if their access pages fail. Docs: rate-limit page is a security control like captcha; `0` on that page rejects every submit.
+
 **1.7.0** — separate `saintapediafeedback-export` right + `MediaWiki:SaintapediaFeedback-export-access` page for bulk JSON export, independent of dashboard access. Five operational settings (rate limit, notify-user list, require-captcha, show-public-counts, enable-Talk-link) can now be set from `MediaWiki:` pages instead of `LocalSettings.php`; PHP config remains the fallback when a page is empty/missing. Secrets (hCaptcha key, LLM webhook token) intentionally stay LocalSettings/env-only.
 
 **1.6.1** — separate `saintapediafeedback-viewemail` right + `MediaWiki:SaintapediaFeedback-email-access` page so contact-email visibility can be restricted independently of general dashboard access (default: sysop, same as before).

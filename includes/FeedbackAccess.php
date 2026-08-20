@@ -101,8 +101,9 @@ class FeedbackAccess {
 				[ self::class, 'getAllowedEmailGroups' ]
 			);
 		} catch ( \Throwable $e ) {
-			// Wiki-page / cache / DB hiccup: hide email rather than 500 the
-			// dashboard for every manager. Does not change userCanManage().
+			// Isolated failure on the email-access page (separate cache key
+			// from dashboard access): hide email instead of 500ing. A general
+			// cache/DB outage still throws from userCanManage() first.
 			self::logClosedFailure( 'userCanViewEmail', $e );
 			return false;
 		}
@@ -123,7 +124,9 @@ class FeedbackAccess {
 				[ self::class, 'getAllowedExportGroups' ]
 			);
 		} catch ( \Throwable $e ) {
-			// Same fail-closed as viewemail: hide export rather than 500 triage.
+			// Isolated failure on the export-access page: hide export instead
+			// of 500ing. Same scope as userCanViewEmail — not a whole-cache
+			// outage (that still dies in userCanManage()).
 			self::logClosedFailure( 'userCanExport', $e );
 			return false;
 		}
