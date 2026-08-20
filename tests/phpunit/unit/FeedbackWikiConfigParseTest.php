@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig::parseBoolToken
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig::resolveBool
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig::resolveInt
+ * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig::overlayReadFailureMessage
  */
 class FeedbackWikiConfigParseTest extends TestCase {
 
@@ -95,5 +96,23 @@ TEXT;
 	public function testResolveIntOverrideAndReadFailure(): void {
 		$this->assertSame( 10, FeedbackWikiConfig::resolveInt( '10', 5 ) );
 		$this->assertSame( 5, FeedbackWikiConfig::resolveInt( '10', 5, true ) );
+	}
+
+	public function testOverlayReadFailureMessageDistinguishesFailClosed(): void {
+		$this->assertSame(
+			'SaintapediaFeedback: wiki-config read failed for SaintapediaFeedbackRequireCaptchaPage; failing closed. boom',
+			FeedbackWikiConfig::overlayReadFailureMessage(
+				'SaintapediaFeedbackRequireCaptchaPage',
+				true,
+				'boom'
+			)
+		);
+		$this->assertSame(
+			'SaintapediaFeedback: wiki-config read failed for SaintapediaFeedbackShowPublicCountsPage; using PHP value.',
+			FeedbackWikiConfig::overlayReadFailureMessage(
+				'SaintapediaFeedbackShowPublicCountsPage',
+				false
+			)
+		);
 	}
 }

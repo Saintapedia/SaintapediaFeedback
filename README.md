@@ -22,6 +22,8 @@ Log in as a user who has the `saintapediafeedback-view` right (usually **Admin**
 | Per article | `/wiki/Special:SaintapediaFeedback/<pageid>` |
 | From an article page | Toolbox → **Page feedback** |
 
+Operator-facing wiki copy (paste onto the wiki as `SaintapediaFeedback`) lives in [docs/wiki/SaintapediaFeedback.wiki](docs/wiki/SaintapediaFeedback.wiki).
+
 Default filter is **New**. Use the status chips (or **All**) to see other items. Search, bulk process, and JSON export are on that same page.
 
 Anonymous users and ordinary named accounts get a permission error on the special page (by design; default access is sysop).
@@ -284,7 +286,10 @@ review process, leave those two pages blank and set
 in `LocalSettings.php` instead; the on-wiki pages simply won't apply until
 they have content. A cache/DB failure while reading the captcha page fails
 closed to captcha **required**, so a blip cannot silently turn protection
-off; a missing or empty page still uses the PHP/mode default. On the
+off; a missing or empty page still uses the PHP/mode default. The PHP
+warning for that case says `failing closed`. The other four knobs (rate
+limit, notify users, public counts, Talk link) log `using PHP value` on
+the same class of failure — they do **not** fail closed. On the
 rate-limit page, `0` is a valid integer and **rejects every submission**
 (`tryInsertUnderLimit` treats `$limit < 1` as over the limit) — it is not
 "unlimited". Delete the page (or leave it blank) to fall back to the PHP
@@ -355,6 +360,8 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 ```
 
 ## Version
+
+**1.7.2** — overlay-read warnings say `failing closed` only for captcha; the other knobs log `using PHP value`. Operator wiki page draft: [docs/wiki/SaintapediaFeedback.wiki](docs/wiki/SaintapediaFeedback.wiki).
 
 **1.7.1** — wiki-config overlay reads fail closed with a warning: captcha stays required if that page cannot be read; contact-email and JSON export deny (instead of 500ing) if their access pages fail. Docs: rate-limit page is a security control like captcha; `0` on that page rejects every submit.
 
