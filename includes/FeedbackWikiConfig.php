@@ -53,16 +53,25 @@ class FeedbackWikiConfig {
 		return ( is_string( $name ) && $name !== '' ) ? $name : $pageDefault;
 	}
 
-	/** Raw trimmed page text, or '' when missing/empty/unavailable. Cached. */
-	private static function loadText( string $pageConfigKey, string $pageDefault ): string {
+	/**
+	 * Raw trimmed page text plus whether the wiki-page read threw.
+	 *
+	 * A missing/empty page, or no MediaWiki services (standalone unit
+	 * tests), is not a read failure — callers fall back to PHP. A
+	 * cache/DB exception is a read failure so security knobs can fail
+	 * closed instead of treating the overlay as empty.
+	 *
+	 * @return array{0: string, 1: bool} [ text, readFailed ]
+	 */
+	private static function loadText( string $pageConfigKey, string $pageDefault ): array {
 		if ( !self::servicesAvailable() ) {
-			return '';
+			return [ '', false ];
 		}
 		try {
 			$pageName = self::pageName( $pageConfigKey, $pageDefault );
 			$cache = MediaWikiServices::getInstance()->getMainWANObjectCache();
 
-			return $cache->getWithSetCallback(
+			$text = $cache->getWithSetCallback(
 				$cache->makeKey( self::CACHE_KEY, md5( $pageName ) ),
 				$cache::TTL_HOUR,
 				static function () use ( $pageName ) {
@@ -81,11 +90,14 @@ class FeedbackWikiConfig {
 					return trim( (string)$text );
 				}
 			);
+			return [ (string)$text, false ];
 		} catch ( \Throwable $e ) {
-			// Cache/DB hiccup: behave as if the page were empty, i.e. fall
-			// back to the PHP config value rather than failing the request
-			// (submit path, captcha check) that triggered this read.
-			return '';
+			if ( function_exists( 'wfLogWarning' ) ) {
+				wfLogWarning(
+					"SaintapediaFeedback: wiki-config read failed for {$pageConfigKey}; failing closed. {$e->getMessage()}"
+				);
+			}
+			return [ '', true ];
 		}
 	}
 
@@ -123,9 +135,24 @@ class FeedbackWikiConfig {
 		return null;
 	}
 
-	/** Effective bool: on-wiki override wins when the page holds a recognizable value. */
-	public static function effectiveBool( string $pageConfigKey, string $pageDefault, bool $phpValue ): bool {
-		$lines = self::parseLines( self::loadText( $pageConfigKey, $pageDefault ) );
+	/**
+	 * Resolve a bool from overlay text. Pure; unit-testable.
+	 *
+	 * $readFailed is a cache/DB exception, not a missing page. When it is
+	 * true and $onReadError is non-null, return $onReadError (captcha uses
+	 * true so a blip cannot turn protection off). Otherwise missing/empty
+	 * /unrecognized text keeps $phpValue.
+	 */
+	public static function resolveBool(
+		string $text,
+		bool $phpValue,
+		bool $readFailed = false,
+		?bool $onReadError = null
+	): bool {
+		if ( $readFailed ) {
+			return $onReadError ?? $phpValue;
+		}
+		$lines = self::parseLines( $text );
 		if ( !$lines ) {
 			return $phpValue;
 		}
@@ -133,18 +160,46 @@ class FeedbackWikiConfig {
 		return $parsed ?? $phpValue;
 	}
 
-	/** Effective int: on-wiki override wins when the page holds a non-negative integer. */
-	public static function effectiveInt( string $pageConfigKey, string $pageDefault, int $phpValue ): int {
-		$lines = self::parseLines( self::loadText( $pageConfigKey, $pageDefault ) );
+	/** Effective bool: on-wiki override wins when the page holds a recognizable value. */
+	public static function effectiveBool(
+		string $pageConfigKey,
+		string $pageDefault,
+		bool $phpValue,
+		?bool $onReadError = null
+	): bool {
+		[ $text, $readFailed ] = self::loadText( $pageConfigKey, $pageDefault );
+		return self::resolveBool( $text, $phpValue, $readFailed, $onReadError );
+	}
+
+	/**
+	 * Resolve a non-negative int from overlay text. Pure; unit-testable.
+	 * `0` is a valid override (reject every submit); empty/unrecognized
+	 * text and read failures keep $phpValue.
+	 */
+	public static function resolveInt( string $text, int $phpValue, bool $readFailed = false ): int {
+		if ( $readFailed ) {
+			return $phpValue;
+		}
+		$lines = self::parseLines( $text );
 		if ( !$lines || !ctype_digit( $lines[0] ) ) {
 			return $phpValue;
 		}
 		return (int)$lines[0];
 	}
 
+	/** Effective int: on-wiki override wins when the page holds a non-negative integer. */
+	public static function effectiveInt( string $pageConfigKey, string $pageDefault, int $phpValue ): int {
+		[ $text, $readFailed ] = self::loadText( $pageConfigKey, $pageDefault );
+		return self::resolveInt( $text, $phpValue, $readFailed );
+	}
+
 	/** Effective list (e.g. usernames): on-wiki override wins when the page has any lines. */
 	public static function effectiveList( string $pageConfigKey, string $pageDefault, array $phpValue ): array {
-		$lines = self::parseLines( self::loadText( $pageConfigKey, $pageDefault ) );
+		[ $text, $readFailed ] = self::loadText( $pageConfigKey, $pageDefault );
+		if ( $readFailed ) {
+			return $phpValue;
+		}
+		$lines = self::parseLines( $text );
 		return $lines ?: $phpValue;
 	}
 

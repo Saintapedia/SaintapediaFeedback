@@ -46,6 +46,8 @@ TEXT;
 
 	public function testDefaultGroupsIsSysop(): void {
 		$this->assertSame( [ 'sysop' ], FeedbackAccess::DEFAULT_GROUPS );
+		$this->assertSame( [ 'sysop' ], FeedbackAccess::DEFAULT_EMAIL_GROUPS );
+		$this->assertSame( [ 'sysop' ], FeedbackAccess::DEFAULT_EXPORT_GROUPS );
 	}
 
 	public function testPersistentAccountExcludesTempAndAnon(): void {
@@ -72,7 +74,18 @@ TEXT;
 		$named = new FakeIdentityUser( true, false );
 		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [], $temp ) );
 		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [], $named ) );
+		// Empty is not "nobody": it substitutes DEFAULT_GROUPS (sysop).
 		$this->assertTrue( FeedbackAccess::groupsGrantAccess( [], $named, [ 'sysop' ] ) );
+	}
+
+	public function testDummyNobodyTokenDoesNotGrantAccess(): void {
+		$named = new FakeIdentityUser( true, false );
+		// A documented dummy token on the email/export page is not *, user,
+		// or a real group, so it grants nobody via the group-list check.
+		// (Revoking the sysop *right* is the other half of locking to nobody.)
+		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [ 'no-one' ], $named ) );
+		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [ 'no-one' ], $named, [ 'sysop' ] ) );
+		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [ 'no-one' ], $named, [ 'user' ] ) );
 	}
 
 	public function testStarTokenAllowsTemp(): void {

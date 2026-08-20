@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 /**
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig::parseLines
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig::parseBoolToken
+ * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig::resolveBool
+ * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig::resolveInt
  */
 class FeedbackWikiConfigParseTest extends TestCase {
 
@@ -57,5 +59,41 @@ TEXT;
 		$this->assertNull( FeedbackWikiConfig::parseBoolToken( 'maybe' ) );
 		$this->assertNull( FeedbackWikiConfig::parseBoolToken( '' ) );
 		$this->assertNull( FeedbackWikiConfig::parseBoolToken( '2' ) );
+	}
+
+	public function testResolveBoolEmptyUsesPhpValue(): void {
+		$this->assertTrue( FeedbackWikiConfig::resolveBool( '', true ) );
+		$this->assertFalse( FeedbackWikiConfig::resolveBool( '', false ) );
+		$this->assertFalse( FeedbackWikiConfig::resolveBool( "# comment only\n", false ) );
+	}
+
+	public function testResolveBoolRecognizesOverlay(): void {
+		$this->assertTrue( FeedbackWikiConfig::resolveBool( 'true', false ) );
+		$this->assertFalse( FeedbackWikiConfig::resolveBool( '* false', true ) );
+	}
+
+	public function testResolveBoolReadFailureUsesOnReadErrorWhenSet(): void {
+		// Captcha: overlay exception must not fall back to PHP=false.
+		$this->assertTrue( FeedbackWikiConfig::resolveBool( '', false, true, true ) );
+		// Without $onReadError, a failed read uses PHP (rate limit etc.).
+		$this->assertFalse( FeedbackWikiConfig::resolveBool( '', false, true, null ) );
+		$this->assertTrue( FeedbackWikiConfig::resolveBool( '', true, true, null ) );
+	}
+
+	public function testResolveIntEmptyUsesPhpValue(): void {
+		$this->assertSame( 5, FeedbackWikiConfig::resolveInt( '', 5 ) );
+		$this->assertSame( 5, FeedbackWikiConfig::resolveInt( "# comment\n", 5 ) );
+		$this->assertSame( 5, FeedbackWikiConfig::resolveInt( 'nope', 5 ) );
+	}
+
+	public function testResolveIntAcceptsZeroAsRejectAll(): void {
+		// 0 is a valid override (tryInsertUnderLimit treats limit < 1 as reject).
+		$this->assertSame( 0, FeedbackWikiConfig::resolveInt( '0', 5 ) );
+		$this->assertSame( 0, FeedbackWikiConfig::resolveInt( '* 0', 5 ) );
+	}
+
+	public function testResolveIntOverrideAndReadFailure(): void {
+		$this->assertSame( 10, FeedbackWikiConfig::resolveInt( '10', 5 ) );
+		$this->assertSame( 5, FeedbackWikiConfig::resolveInt( '10', 5, true ) );
 	}
 }
