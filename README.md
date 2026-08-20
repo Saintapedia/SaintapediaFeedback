@@ -23,7 +23,7 @@ Log in as a user who has the `saintapediafeedback-view` right (usually **Admin**
 | Per article | `/wiki/Special:SaintapediaFeedback/<pageid>` |
 | From an article page | Toolbox → **Page feedback** |
 
-Operator-facing wiki copy (paste onto the wiki as `Project:SaintapediaFeedback`) lives in [docs/wiki/Project-SaintapediaFeedback.wiki](docs/wiki/Project-SaintapediaFeedback.wiki).
+Operator-facing wiki copy (paste onto the wiki as `SaintapediaFeedback`) lives in [docs/wiki/SaintapediaFeedback.wiki](docs/wiki/SaintapediaFeedback.wiki).
 
 Default filter is **New**. Use the status chips (or **All**) to see other items. Search, bulk process, and JSON export are on that same page.
 
@@ -362,7 +362,7 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 
 ## Version
 
-**1.7.2** — overlay-read warnings say `failing closed` only for captcha; the other knobs log `using PHP value`. Operator wiki page draft: [docs/wiki/Project-SaintapediaFeedback.wiki](docs/wiki/Project-SaintapediaFeedback.wiki).
+**1.7.2** — overlay-read warnings say `failing closed` only for captcha; the other knobs log `using PHP value`. Operator wiki page draft: [docs/wiki/SaintapediaFeedback.wiki](docs/wiki/SaintapediaFeedback.wiki).
 
 **1.7.1** — wiki-config overlay reads fail closed with a warning: captcha stays required if that page cannot be read; contact-email and JSON export deny (instead of 500ing) if their access pages fail. Docs: rate-limit page is a security control like captcha; `0` on that page rejects every submit.
 

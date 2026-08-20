@@ -1,9 +1,9 @@
 <!--
-  Paste this onto the wiki as [[Project:SaintapediaFeedback]].
-  Source of truth in the extension repo: docs/wiki/Project-SaintapediaFeedback.wiki
+  Paste this onto the wiki as [[SaintapediaFeedback]].
+  Source of truth in the extension repo: docs/wiki/SaintapediaFeedback.wiki
   Requires SaintapediaFeedback 1.7.2+.
 -->
-= Article feedback =
+= SaintapediaFeedback =
 
 Readers can suggest improvements from the floating '''Improve this article''' button on main-namespace pages. Editors triage that feedback at [[Special:SaintapediaFeedback]].
 

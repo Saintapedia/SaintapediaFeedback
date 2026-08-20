@@ -169,7 +169,7 @@ from your homepage or announcing it anywhere:
   page instead of `LocalSettings.php` — see [README.md § On-wiki config for
   operational settings](../README.md#on-wiki-config-for-operational-settings-no-deploy)
   and the paste-ready operator page
-  [Project-SaintapediaFeedback.wiki](wiki/Project-SaintapediaFeedback.wiki).
+  [SaintapediaFeedback.wiki](wiki/SaintapediaFeedback.wiki).
   Captcha **and** the rate-limit page are security controls: anyone with
   `editinterface` can flip them without a deploy. On a public wiki, leave
   those two pages **blank** and keep the values in LocalSettings. If you do
