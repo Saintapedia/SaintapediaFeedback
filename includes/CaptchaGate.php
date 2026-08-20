@@ -40,10 +40,14 @@ class CaptchaGate {
 			? $config->get( 'SaintapediaFeedbackMode' ) !== 'enterprise'
 			: (bool)$flag;
 
+		// 4th arg: cache/DB overlay failure fails closed to enabled, so a
+		// blip cannot turn captcha off when the wiki page had it on.
+		// Missing/empty page still uses $phpValue (standalone tests too).
 		return FeedbackWikiConfig::effectiveBool(
 			'SaintapediaFeedbackRequireCaptchaPage',
 			'SaintapediaFeedback-require-captcha',
-			$phpValue
+			$phpValue,
+			true
 		);
 	}
 

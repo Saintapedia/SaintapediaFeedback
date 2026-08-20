@@ -94,23 +94,19 @@ class FeedbackAccess {
 	 * someone who can already open the dashboard.
 	 */
 	public static function userCanViewEmail( UserIdentity $user ): bool {
-		$userObj = $user instanceof User
-			? $user
-			: MediaWikiServices::getInstance()->getUserFactory()->newFromUserIdentity( $user );
-
-		if ( self::userIsBlocked( $userObj ) ) {
+		try {
+			return self::userHasSecondaryAccess(
+				$user,
+				'saintapediafeedback-viewemail',
+				[ self::class, 'getAllowedEmailGroups' ]
+			);
+		} catch ( \Throwable $e ) {
+			// Isolated failure on the email-access page (separate cache key
+			// from dashboard access): hide email instead of 500ing. A general
+			// cache/DB outage still throws from userCanManage() first.
+			self::logClosedFailure( 'userCanViewEmail', $e );
 			return false;
 		}
-
-		if ( $userObj->isAllowed( 'saintapediafeedback-viewemail' ) ) {
-			return true;
-		}
-
-		$effective = MediaWikiServices::getInstance()
-			->getUserGroupManager()
-			->getUserEffectiveGroups( $userObj );
-
-		return self::groupsGrantAccess( self::getAllowedEmailGroups(), $userObj, $effective );
 	}
 
 	/**
@@ -121,6 +117,38 @@ class FeedbackAccess {
 	 * userCanManage() first — export routes require both.
 	 */
 	public static function userCanExport( UserIdentity $user ): bool {
+		try {
+			return self::userHasSecondaryAccess(
+				$user,
+				'saintapediafeedback-export',
+				[ self::class, 'getAllowedExportGroups' ]
+			);
+		} catch ( \Throwable $e ) {
+			// Isolated failure on the export-access page: hide export instead
+			// of 500ing. Same scope as userCanViewEmail — not a whole-cache
+			// outage (that still dies in userCanManage()).
+			self::logClosedFailure( 'userCanExport', $e );
+			return false;
+		}
+	}
+
+	private static function logClosedFailure( string $context, \Throwable $e ): void {
+		if ( function_exists( 'wfLogWarning' ) ) {
+			wfLogWarning( "SaintapediaFeedback: {$context} overlay read failed; denying. {$e->getMessage()}" );
+		}
+	}
+
+	/**
+	 * Email/export check without the fail-closed wrapper. Throws on a
+	 * wiki-page read failure so the callers can deny instead of 500.
+	 *
+	 * @param callable(): string[] $groupsFn
+	 */
+	private static function userHasSecondaryAccess(
+		UserIdentity $user,
+		string $right,
+		callable $groupsFn
+	): bool {
 		$userObj = $user instanceof User
 			? $user
 			: MediaWikiServices::getInstance()->getUserFactory()->newFromUserIdentity( $user );
@@ -129,7 +157,7 @@ class FeedbackAccess {
 			return false;
 		}
 
-		if ( $userObj->isAllowed( 'saintapediafeedback-export' ) ) {
+		if ( $userObj->isAllowed( $right ) ) {
 			return true;
 		}
 
@@ -137,7 +165,7 @@ class FeedbackAccess {
 			->getUserGroupManager()
 			->getUserEffectiveGroups( $userObj );
 
-		return self::groupsGrantAccess( self::getAllowedExportGroups(), $userObj, $effective );
+		return self::groupsGrantAccess( $groupsFn(), $userObj, $effective );
 	}
 
 	/**

@@ -226,6 +226,19 @@ hit directly. Useful when you want a large triage team to process feedback in
 the UI but keep bulk offline downloads (which are easier to exfiltrate or
 mishandle than on-screen rows) to a smaller set.
 
+**Getting export to "nobody" is the same two-step as email.** Creating
+`MediaWiki:SaintapediaFeedback-export-access` with `no-one` is not enough:
+sysop still has `saintapediafeedback-export` via `extension.json`. You must
+also revoke that right:
+
+```php
+$wgGroupPermissions['sysop']['saintapediafeedback-export'] = false;
+```
+
+and point the group list at a dummy token (`no-one` on the export-access
+page, or `$wgSaintapediaFeedbackExportAccessGroups = [ 'no-one' ];`). An
+empty list/page falls back to sysop, same as email.
+
 ## On-wiki config for operational settings (no deploy)
 
 A handful of non-secret operational knobs can also be set from a
@@ -237,7 +250,7 @@ page.
 
 | Setting | Page (DB key, no prefix) | Format | Overrides |
 |---------|---------------------------|--------|-----------|
-| Rate limit | `SaintapediaFeedback-ratelimit` | one integer | `$wgSaintapediaFeedbackRateLimit` / `EnterpriseRateLimit` (mode-appropriate one) |
+| Rate limit | `SaintapediaFeedback-ratelimit` | non-negative integer (`0` = reject every submit; delete the page to revert to PHP, do not write `0`) | `$wgSaintapediaFeedbackRateLimit` / `EnterpriseRateLimit` (mode-appropriate one) |
 | Notify users | `SaintapediaFeedback-notify-users` | one username per line | `$wgSaintapediaFeedbackNotifyUsers` |
 | Require captcha | `SaintapediaFeedback-require-captcha` | `true` / `false` | `$wgSaintapediaFeedbackRequireCaptcha` (and the mode-based auto default) |
 | Show public counts | `SaintapediaFeedback-show-public-counts` | `true` / `false` | `$wgSaintapediaFeedbackShowPublicCounts` |
@@ -260,14 +273,22 @@ though editing them is restricted to `editinterface` — putting a secret there
 would publish it, not lock it down. Those stay in `LocalSettings.php` / env
 vars only.
 
-**Captcha-required is worth a specific callout**: unlike the other four, it's
-a security control, not just an operational preference. Putting it on-wiki
-means any `editinterface` holder can turn off your abuse protection without
-a deploy, a code review, or a PR — only page-edit history as an audit trail.
-If that tradeoff doesn't fit your review process, leave
-`SaintapediaFeedback-require-captcha` blank and set
-`$wgSaintapediaFeedbackRequireCaptcha` in `LocalSettings.php` instead; the
-on-wiki page simply won't apply until it has content.
+**Captcha-required and the rate-limit page are security controls**, not just
+operational preferences (notify users, public counts, and Talk link are).
+Putting them on-wiki means any `editinterface` holder can turn off captcha
+or write a huge integer to `SaintapediaFeedback-ratelimit` and neutralize
+volume abuse control — without a deploy, a code review, or a PR, only
+page-edit history as an audit trail. If that tradeoff doesn't fit your
+review process, leave those two pages blank and set
+`$wgSaintapediaFeedbackRequireCaptcha` / `$wgSaintapediaFeedbackRateLimit`
+in `LocalSettings.php` instead; the on-wiki pages simply won't apply until
+they have content. A cache/DB failure while reading the captcha page fails
+closed to captcha **required**, so a blip cannot silently turn protection
+off; a missing or empty page still uses the PHP/mode default. On the
+rate-limit page, `0` is a valid integer and **rejects every submission**
+(`tryInsertUnderLimit` treats `$limit < 1` as over the limit) — it is not
+"unlimited". Delete the page (or leave it blank) to fall back to the PHP
+value.
 
 ## Security model (public)
 
@@ -334,6 +355,8 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 ```
 
 ## Version
+
+**1.7.1** — wiki-config overlay reads fail closed with a warning: captcha stays required if that page cannot be read; contact-email and JSON export deny (instead of 500ing) if their access pages fail. Docs: rate-limit page is a security control like captcha; `0` on that page rejects every submit.
 
 **1.7.0** — separate `saintapediafeedback-export` right + `MediaWiki:SaintapediaFeedback-export-access` page for bulk JSON export, independent of dashboard access. Five operational settings (rate limit, notify-user list, require-captcha, show-public-counts, enable-Talk-link) can now be set from `MediaWiki:` pages instead of `LocalSettings.php`; PHP config remains the fallback when a page is empty/missing. Secrets (hCaptcha key, LLM webhook token) intentionally stay LocalSettings/env-only.
 
