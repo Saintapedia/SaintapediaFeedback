@@ -164,14 +164,21 @@ from your homepage or announcing it anywhere:
   MediaWiki blocking. A block immediately revokes both submit access and,
   if applicable, dashboard access (§3) — you don't need a separate
   extension-specific ban list.
-- **On-wiki overrides**: rate limit, notify-user list, and the
-  captcha-required flag can each be set from a `MediaWiki:` page instead of
-  `LocalSettings.php` — see [README.md § On-wiki config for operational
-  settings](../README.md#on-wiki-config-for-operational-settings-no-deploy).
-  If you go this route for captcha, treat `MediaWiki:SaintapediaFeedback-require-captcha`
-  as part of your abuse-monitoring surface: anyone with `editinterface` can
-  flip it off without a deploy, so re-run the §6 fail-closed check after any
-  edit to that page, not just after a `LocalSettings.php` change.
+- **On-wiki overrides**: rate limit, notify-user list, captcha-required,
+  public counts, and the Talk-link flag can each be set from a `MediaWiki:`
+  page instead of `LocalSettings.php` — see [README.md § On-wiki config for
+  operational settings](../README.md#on-wiki-config-for-operational-settings-no-deploy)
+  and the paste-ready operator page
+  [Project-SaintapediaFeedback.wiki](wiki/Project-SaintapediaFeedback.wiki).
+  Captcha **and** the rate-limit page are security controls: anyone with
+  `editinterface` can flip them without a deploy. On a public wiki, leave
+  those two pages **blank** and keep the values in LocalSettings. If you do
+  create `MediaWiki:SaintapediaFeedback-require-captcha`, re-run the §6
+  fail-closed check after any edit to that page. A cache/DB blip reading
+  the captcha page logs `failing closed` and keeps captcha required; a blip
+  reading any of the other four knobs logs `using PHP value` and falls back
+  to LocalSettings (rate-limit `0` is *not* that fallback — `0` rejects
+  every submit; delete the page to revert).
 - **Rate-limit tuning**: `$wgSaintapediaFeedbackRateLimit` (default 5/day) is
   per hashed-IP. It will not stop an attacker rotating IPs or using a VPN —
   hCaptcha is your real backstop against scripted abuse, not the rate limit.

@@ -18,9 +18,12 @@ Log in as a user who has the `saintapediafeedback-view` right (usually **Admin**
 | Wiki | Dashboard URL |
 |------|----------------|
 | **Path on any wiki** | `/wiki/Special:SaintapediaFeedback` |
+| **dev.saintapedia.org** | **https://dev.saintapedia.org/wiki/Special:SaintapediaFeedback** |
 | **Local Canasta dev** (`mwdev`, port 8080) | **http://localhost:8080/wiki/Special:SaintapediaFeedback** |
 | Per article | `/wiki/Special:SaintapediaFeedback/<pageid>` |
 | From an article page | Toolbox → **Page feedback** |
+
+Operator-facing wiki copy (paste onto the wiki as `Project:SaintapediaFeedback`) lives in [docs/wiki/Project-SaintapediaFeedback.wiki](docs/wiki/Project-SaintapediaFeedback.wiki).
 
 Default filter is **New**. Use the status chips (or **All**) to see other items. Search, bulk process, and JSON export are on that same page.
 
@@ -284,7 +287,10 @@ review process, leave those two pages blank and set
 in `LocalSettings.php` instead; the on-wiki pages simply won't apply until
 they have content. A cache/DB failure while reading the captcha page fails
 closed to captcha **required**, so a blip cannot silently turn protection
-off; a missing or empty page still uses the PHP/mode default. On the
+off; a missing or empty page still uses the PHP/mode default. The PHP
+warning for that case says `failing closed`. The other four knobs (rate
+limit, notify users, public counts, Talk link) log `using PHP value` on
+the same class of failure — they do **not** fail closed. On the
 rate-limit page, `0` is a valid integer and **rejects every submission**
 (`tryInsertUnderLimit` treats `$limit < 1` as over the limit) — it is not
 "unlimited". Delete the page (or leave it blank) to fall back to the PHP
@@ -356,7 +362,7 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 
 ## Version
 
-**1.7.2** — overlay-read warnings say `failing closed` only for captcha; the other knobs log `using PHP value`.
+**1.7.2** — overlay-read warnings say `failing closed` only for captcha; the other knobs log `using PHP value`. Operator wiki page draft: [docs/wiki/Project-SaintapediaFeedback.wiki](docs/wiki/Project-SaintapediaFeedback.wiki).
 
 **1.7.1** — wiki-config overlay reads fail closed with a warning: captcha stays required if that page cannot be read; contact-email and JSON export deny (instead of 500ing) if their access pages fail. Docs: rate-limit page is a security control like captcha; `0` on that page rejects every submit.
 
