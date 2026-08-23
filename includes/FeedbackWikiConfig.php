@@ -3,7 +3,7 @@
 namespace MediaWiki\Extension\SaintapediaFeedback;
 
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Title\Title;
+use Title;
 
 /**
  * Generic on-wiki override for non-secret operational knobs: rate limit,

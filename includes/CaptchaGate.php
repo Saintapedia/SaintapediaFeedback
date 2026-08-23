@@ -2,14 +2,14 @@
 
 namespace MediaWiki\Extension\SaintapediaFeedback;
 
-use MediaWiki\Config\Config;
-use MediaWiki\Extension\ConfirmEdit\Hooks as ConfirmEditHooks;
+use Config;
+use ExtensionRegistry;
 use MediaWiki\Extension\ConfirmEdit\hCaptcha\HCaptcha;
+use MediaWiki\Extension\ConfirmEdit\Hooks as ConfirmEditHooks;
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Output\OutputPage;
-use MediaWiki\Registration\ExtensionRegistry;
-use MediaWiki\Request\WebRequest;
-use MediaWiki\User\User;
+use OutputPage;
+use User;
+use WebRequest;
 
 /**
  * Multi-wiki captcha policy for open (mostly anonymous) feedback submit.

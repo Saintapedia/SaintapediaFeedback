@@ -9,7 +9,7 @@ use MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig;
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Title\TitleFactory;
+use TitleFactory;
 use Wikimedia\ParamValidator\ParamValidator;
 
 class ApiSubmitFeedback extends ApiBase {

@@ -77,6 +77,39 @@
 		return node;
 	}
 
+	var HCAPTCHA_SRC = 'https://hcaptcha.com/1/api.js?render=explicit';
+
+	/**
+	 * Wait for an hCaptcha script another script already started loading.
+	 *
+	 * A wiki can run more than one extension that offers an anonymous form
+	 * behind hCaptcha (SaintapediaSuggest ships the same widget pattern), and
+	 * each would otherwise inject its own copy of the same URL, initialising
+	 * hCaptcha twice. When a tag is already present, poll for the global
+	 * instead of adding another.
+	 *
+	 * @param {number} timeoutMs
+	 * @return {Promise}
+	 */
+	function waitForHCaptcha( timeoutMs ) {
+		return new Promise( function ( resolve, reject ) {
+			var waited = 0;
+			var step = 100;
+			( function poll() {
+				if ( window.hcaptcha ) {
+					resolve();
+					return;
+				}
+				waited += step;
+				if ( waited >= timeoutMs ) {
+					reject( new Error( 'hcaptcha-load-timeout' ) );
+					return;
+				}
+				setTimeout( poll, step );
+			}() );
+		} );
+	}
+
 	function loadHCaptchaScript() {
 		if ( window.hcaptcha ) {
 			return Promise.resolve();
@@ -84,9 +117,19 @@
 		if ( hcaptchaScriptPromise ) {
 			return hcaptchaScriptPromise;
 		}
+
+		// Another extension on this page may already have injected it.
+		if ( document.querySelector( 'script[src^="https://hcaptcha.com/1/api.js"]' ) ) {
+			hcaptchaScriptPromise = waitForHCaptcha( 15000 ).catch( function ( e ) {
+				hcaptchaScriptPromise = null;
+				throw e;
+			} );
+			return hcaptchaScriptPromise;
+		}
+
 		hcaptchaScriptPromise = new Promise( function ( resolve, reject ) {
 			var s = document.createElement( 'script' );
-			s.src = 'https://hcaptcha.com/1/api.js?render=explicit';
+			s.src = HCAPTCHA_SRC;
 			s.async = true;
 			s.defer = true;
 			s.onload = function () {

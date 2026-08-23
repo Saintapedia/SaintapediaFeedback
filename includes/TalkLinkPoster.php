@@ -2,13 +2,13 @@
 
 namespace MediaWiki\Extension\SaintapediaFeedback;
 
-use MediaWiki\CommentStore\CommentStoreComment;
-use MediaWiki\Content\WikitextContent;
+use CommentStoreComment;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Revision\SlotRecord;
-use MediaWiki\Title\Title;
-use MediaWiki\User\User;
 use SpecialPage;
+use Title;
+use User;
+use WikitextContent;
 
 /**
  * Optional short Talk-page note linking to public resolutions.

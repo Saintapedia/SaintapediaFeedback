@@ -2,12 +2,12 @@
 
 namespace MediaWiki\Extension\SaintapediaFeedback;
 
-use MediaWiki\Config\Config;
+use Config;
+use ExtensionRegistry;
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Registration\ExtensionRegistry;
-use MediaWiki\Title\Title;
-use MediaWiki\User\User;
 use SpecialPage;
+use Title;
+use User;
 use Wikimedia\Rdbms\ILoadBalancer;
 
 /**

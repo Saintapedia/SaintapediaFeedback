@@ -5,6 +5,12 @@
  */
 
 // Stub MW Config interface so CaptchaGate typehints resolve outside a full MW tree.
+//
+// Defined under MediaWiki\Config and aliased to the global name, mirroring what
+// MediaWiki itself does: the interface lives in the namespace from 1.42 and
+// carries a class_alias so the pre-namespace global `Config` keeps working. The
+// extension type-hints the global name for 1.39 compatibility, and the alias
+// makes both spellings the same type, so a stub implementing either satisfies it.
 namespace MediaWiki\Config {
 	if ( !interface_exists( Config::class ) ) {
 		interface Config {
@@ -20,6 +26,10 @@ namespace MediaWiki\Config {
 			 */
 			public function has( $name );
 		}
+	}
+
+	if ( !interface_exists( \Config::class, false ) ) {
+		class_alias( Config::class, 'Config' );
 	}
 }
 

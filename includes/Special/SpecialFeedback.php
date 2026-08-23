@@ -10,10 +10,10 @@ use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig;
 use MediaWiki\Extension\SaintapediaFeedback\TalkLinkPoster;
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Title\TitleFactory;
 use PermissionsError;
 use SpecialPage;
 use Title;
+use TitleFactory;
 use User;
 
 /**

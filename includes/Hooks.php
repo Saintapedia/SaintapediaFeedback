@@ -2,13 +2,13 @@
 
 namespace MediaWiki\Extension\SaintapediaFeedback;
 
+use Config;
 use DatabaseUpdater;
-use MediaWiki\Config\Config;
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Output\OutputPage;
-use MediaWiki\Title\Title;
+use OutputPage;
 use Skin;
 use SpecialPage;
+use Title;
 
 class Hooks {
 
@@ -169,6 +169,22 @@ class Hooks {
 			'spf_feedback',
 			'spf_ip_time',
 			$dir . '/patch-ip-hash-index.sql'
+		);
+		// Indexes are registered one per patch rather than bundled into the
+		// ALTERs above. A bare CREATE INDEX aborts the remainder of its patch
+		// file when the name already exists, and MediaWiki cannot resume a
+		// half-applied patch — so the guard column would already be present,
+		// the patch would never re-run, and the index would be missing for
+		// good. Registered individually, each is guarded by its own check.
+		$updater->addExtensionIndex(
+			'spf_feedback',
+			'spf_priority',
+			$dir . '/patch-index-priority.sql'
+		);
+		$updater->addExtensionIndex(
+			'spf_feedback',
+			'spf_public_res',
+			$dir . '/patch-index-public-res.sql'
 		);
 	}
 

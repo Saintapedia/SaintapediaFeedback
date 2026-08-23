@@ -3,9 +3,9 @@
 namespace MediaWiki\Extension\SaintapediaFeedback;
 
 use MediaWiki\MediaWikiServices;
-use MediaWiki\Title\Title;
-use MediaWiki\User\User;
 use MediaWiki\User\UserIdentity;
+use Title;
+use User;
 
 /**
  * Who may view/process the feedback dashboard.
