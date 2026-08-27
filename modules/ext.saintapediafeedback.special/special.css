@@ -378,3 +378,48 @@
 	background: #f8f9fa;
 	max-width: 32rem;
 }
+
+/* Single-item status history (Special:SaintapediaFeedback/detail/<id>) */
+
+.spf-detail-link {
+	font-size: 0.8125rem;
+}
+
+.spf-backlinks {
+	margin-bottom: 0.75rem;
+}
+
+.spf-history {
+	margin: 1rem 0;
+}
+
+.spf-history h3 {
+	font-size: 1rem;
+	margin: 0 0 0.4rem;
+}
+
+.spf-history-table {
+	width: 100%;
+	font-size: 0.875rem;
+}
+
+.spf-history-table td,
+.spf-history-table th {
+	padding: 0.3rem 0.5rem;
+	text-align: left;
+	vertical-align: top;
+}
+
+.spf-history-time {
+	white-space: nowrap;
+	color: #54595d;
+}
+
+.spf-history-note {
+	word-break: break-word;
+}
+
+.spf-history-system {
+	color: #72777d;
+	font-style: italic;
+}

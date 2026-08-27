@@ -493,6 +493,72 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 	 *
 	 * @param \Wikimedia\Rdbms\IDatabase $db
 	 */
+	/**
+	 * Status history for one feedback item, oldest first.
+	 *
+	 * spf_feedback_log has been written on every transition since the audit
+	 * patch landed, but nothing read it — the dashboard only ever showed the
+	 * denormalized "last set by" pair on the feedback row itself. This is the
+	 * reader for it.
+	 *
+	 * Tolerates the table or its log_note column being absent, matching
+	 * insertStatusLog(): a wiki that has not run update.php since the audit
+	 * patch should get an empty history, not an exception on the detail view.
+	 *
+	 * @return object[]
+	 */
+	public function getStatusLog( int $fbId, int $limit = 100 ): array {
+		if ( $fbId <= 0 ) {
+			return [];
+		}
+		try {
+			$db = $this->loadBalancer->getConnection( DB_REPLICA );
+			if ( !$db->tableExists( 'spf_feedback_log', __METHOD__ ) ) {
+				return [];
+			}
+			$fields = [
+				'log_id',
+				'log_fb_id',
+				'log_user_id',
+				'log_old_status',
+				'log_new_status',
+				'log_timestamp',
+			];
+			if ( $db->fieldExists( 'spf_feedback_log', 'log_note', __METHOD__ ) ) {
+				$fields[] = 'log_note';
+			}
+			$rows = $db->select(
+				'spf_feedback_log',
+				$fields,
+				[ 'log_fb_id' => $fbId ],
+				__METHOD__,
+				[ 'ORDER BY' => 'log_timestamp ASC, log_id ASC', 'LIMIT' => $limit ]
+			);
+			return iterator_to_array( $rows );
+		} catch ( \Throwable $e ) {
+			wfDebugLog( 'SaintapediaFeedback', 'audit log read failed: ' . $e->getMessage() );
+			return [];
+		}
+	}
+
+	/**
+	 * One feedback row by id, including the columns list queries omit.
+	 * Returns null when it no longer exists.
+	 */
+	public function getById( int $fbId ): ?object {
+		if ( $fbId <= 0 ) {
+			return null;
+		}
+		$db = $this->loadBalancer->getConnection( DB_REPLICA );
+		$row = $db->selectRow(
+			'spf_feedback',
+			self::MANAGER_LIST_FIELDS,
+			[ 'fb_id' => $fbId ],
+			__METHOD__
+		);
+		return $row ?: null;
+	}
+
 	private function insertStatusLog(
 		$db,
 		int $fbId,

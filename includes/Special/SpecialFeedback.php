@@ -106,6 +106,15 @@ class SpecialFeedback extends SpecialPage {
 
 		// Subpage form Special:SaintapediaFeedback/<pageid> → per-article view.
 		// Query ?pageid= is reserved for dashboard filtering (not page view).
+		// Single item with its full status history.
+		if ( strpos( $par, 'detail/' ) === 0 ) {
+			$rest = substr( $par, strlen( 'detail/' ) );
+			if ( ctype_digit( $rest ) ) {
+				$this->showDetail( (int)$rest );
+				return;
+			}
+		}
+
 		if ( $par !== '' && ctype_digit( $par ) ) {
 			$this->showPageFeedback( (int)$par );
 			return;
@@ -307,6 +316,110 @@ class SpecialFeedback extends SpecialPage {
 	 *
 	 * @return bool True when a redirect was issued
 	 */
+	/**
+	 * One feedback item and every status change ever recorded for it.
+	 *
+	 * spf_feedback_log has been collecting transitions since the audit patch,
+	 * with no way to read them; the dashboard shows only the last one. This is
+	 * where "who changed this, when, and why" is answerable.
+	 */
+	private function showDetail( int $fbId ): void {
+		$out = $this->getOutput();
+
+		$row = $this->store->getById( $fbId );
+		if ( !$row ) {
+			$out->addHTML( Html::element(
+				'p',
+				[ 'class' => 'error' ],
+				$this->msg( 'saintapediafeedback-unknown-item' )->numParams( $fbId )->text()
+			) );
+			return;
+		}
+
+		$out->setPageTitle( $this->msg( 'saintapediafeedback-detail-title' )->numParams( $fbId )->text() );
+
+		$links = $this->getLinkRenderer()->makeLink(
+			$this->getPageTitle(),
+			$this->msg( 'saintapediafeedback-back-to-dashboard' )->text()
+		);
+		$title = $this->titleFromId( (int)$row->fb_page_id );
+		if ( $title ) {
+			$links .= ' · ' . $this->getLinkRenderer()->makeLink(
+				$this->getPageTitle( (string)(int)$row->fb_page_id ),
+				$this->msg( 'saintapediafeedback-page-feedback-link' )->text()
+			);
+			$links .= ' · ' . $this->getLinkRenderer()->makeLink( $title, $title->getPrefixedText() );
+		}
+		$out->addHTML( Html::rawElement( 'p', [ 'class' => 'spf-backlinks' ], $links ) );
+
+		// Reuse the list renderer so the item looks the same everywhere, and
+		// so the contact-email gating stays in exactly one place.
+		$emails = $this->contactEmailsForRows( [ $row ] );
+		$this->renderFeedbackRow( $row, true, $emails[$fbId] ?? null );
+
+		$out->addHTML( $this->renderStatusHistory( $fbId ) );
+	}
+
+	/**
+	 * Full status history table for one item, oldest first.
+	 */
+	private function renderStatusHistory( int $fbId ): string {
+		$entries = $this->store->getStatusLog( $fbId );
+
+		$heading = Html::element( 'h3', [], $this->msg( 'saintapediafeedback-history-heading' )->text() );
+		if ( !$entries ) {
+			return Html::rawElement( 'div', [ 'class' => 'spf-history' ],
+				$heading . Html::element( 'p', [ 'class' => 'spf-empty' ],
+					$this->msg( 'saintapediafeedback-history-empty' )->text() )
+			);
+		}
+
+		$lang = $this->getLanguage();
+		$viewer = $this->getUser();
+		$userFactory = MediaWikiServices::getInstance()->getUserFactory();
+
+		$body = '';
+		foreach ( $entries as $entry ) {
+			$actorId = (int)( $entry->log_user_id ?? 0 );
+			$actor = $actorId > 0 ? $userFactory->newFromId( $actorId ) : null;
+			$actorCell = $actor && $actor->getName() !== ''
+				? $this->getLinkRenderer()->makeLink( $actor->getUserPage(), $actor->getName() )
+				: Html::element( 'span', [ 'class' => 'spf-history-system' ],
+					$this->msg( 'saintapediafeedback-history-unknown-user' )->text() );
+
+			$from = (string)( $entry->log_old_status ?? '' );
+			$transition = ( $from !== ''
+					? $this->msg( 'saintapediafeedback-status-' . $from )->text() . ' → '
+					: '' )
+				. $this->msg( 'saintapediafeedback-status-' . (string)$entry->log_new_status )->text();
+
+			$body .= Html::rawElement( 'tr', [],
+				Html::element( 'td', [ 'class' => 'spf-history-time' ],
+					$lang->userTimeAndDate( (string)$entry->log_timestamp, $viewer ) )
+				. Html::rawElement( 'td', [ 'class' => 'spf-history-user' ], $actorCell )
+				. Html::element( 'td', [ 'class' => 'spf-history-change' ], $transition )
+				// Reviewer notes are free text written by managers; escaped.
+				. Html::element( 'td', [ 'class' => 'spf-history-note' ],
+					(string)( $entry->log_note ?? '' ) )
+			);
+		}
+
+		$head = Html::rawElement( 'tr', [],
+			Html::element( 'th', [], $this->msg( 'saintapediafeedback-history-when' )->text() )
+			. Html::element( 'th', [], $this->msg( 'saintapediafeedback-history-who' )->text() )
+			. Html::element( 'th', [], $this->msg( 'saintapediafeedback-history-what' )->text() )
+			. Html::element( 'th', [], $this->msg( 'saintapediafeedback-history-note' )->text() )
+		);
+
+		return Html::rawElement( 'div', [ 'class' => 'spf-history' ],
+			$heading
+			. Html::rawElement( 'table', [ 'class' => 'wikitable spf-history-table' ],
+				Html::rawElement( 'thead', [], $head )
+				. Html::rawElement( 'tbody', [], $body )
+			)
+		);
+	}
+
 	private function handleStatusUpdate(): bool {
 		$request = $this->getRequest();
 		// Bulk form uses spfbulkaction — ignore here
@@ -974,6 +1087,16 @@ class SpecialFeedback extends SpecialPage {
 
 		$statusClass = 'spf-status-' . htmlspecialchars( $row->fb_status );
 		$time = $this->getLanguage()->userTimeAndDate( $row->fb_timestamp, $this->getUser() );
+		// Link to the item's own page, where its full status history lives.
+		// Suppressed on the detail view itself (it would link to the page you
+		// are already on).
+		$detailLink = $this->subpage === 'detail/' . (int)$row->fb_id
+			? ''
+			: ' ' . $this->getLinkRenderer()->makeLink(
+				$this->getPageTitle( 'detail/' . (int)$row->fb_id ),
+				$this->msg( 'saintapediafeedback-detail-link' )->text(),
+				[ 'class' => 'spf-detail-link' ]
+			);
 
 		$out->addHTML( '<div class="spf-feedback-item ' . $statusClass . '">' );
 		$out->addHTML( '<div class="spf-feedback-meta">' );
@@ -987,6 +1110,7 @@ class SpecialFeedback extends SpecialPage {
 		}
 		$out->addHTML( '<span class="spf-id">#' . (int)$row->fb_id . '</span> ' );
 		$out->addHTML( '<span class="spf-time">' . htmlspecialchars( $time ) . '</span> ' );
+		$out->addHTML( $detailLink );
 		$out->addHTML( '<span class="spf-mode spf-mode-' . htmlspecialchars( $row->fb_mode ) . '">'
 			. htmlspecialchars( $row->fb_mode ) . '</span> ' );
 		$out->addHTML( '<span class="spf-status spf-status-badge">'
