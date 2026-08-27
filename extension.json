@@ -1,7 +1,9 @@
 {
 	"name": "SaintapediaFeedback",
 	"version": "1.7.3",
-	"author": [ "Saintapedia contributors" ],
+	"author": [
+		"Saintapedia contributors"
+	],
 	"url": "https://github.com/Saintapedia/SaintapediaFeedback",
 	"descriptionmsg": "saintapediafeedback-desc",
 	"license-name": "GPL-2.0-or-later",
@@ -10,7 +12,9 @@
 		"MediaWiki": ">= 1.39.0"
 	},
 	"MessagesDirs": {
-		"SaintapediaFeedback": [ "i18n" ]
+		"SaintapediaFeedback": [
+			"i18n"
+		]
 	},
 	"AutoloadNamespaces": {
 		"MediaWiki\\Extension\\SaintapediaFeedback\\": "includes/"
@@ -21,13 +25,19 @@
 	"APIModules": {
 		"saintapediafeedback": {
 			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Api\\ApiSubmitFeedback",
-			"services": [ "SaintapediaFeedback.FeedbackStore", "TitleFactory" ]
+			"services": [
+				"SaintapediaFeedback.FeedbackStore",
+				"TitleFactory"
+			]
 		}
 	},
 	"SpecialPages": {
 		"SaintapediaFeedback": {
 			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Special\\SpecialFeedback",
-			"services": [ "SaintapediaFeedback.FeedbackStore", "TitleFactory" ]
+			"services": [
+				"SaintapediaFeedback.FeedbackStore",
+				"TitleFactory"
+			]
 		}
 	},
 	"AvailableRights": [
@@ -55,8 +65,12 @@
 		"ext.saintapediafeedback.widget": {
 			"localBasePath": "modules/ext.saintapediafeedback.widget",
 			"remoteExtPath": "SaintapediaFeedback/modules/ext.saintapediafeedback.widget",
-			"scripts": [ "widget.js" ],
-			"styles": [ "widget.css" ],
+			"scripts": [
+				"widget.js"
+			],
+			"styles": [
+				"widget.css"
+			],
 			"messages": [
 				"saintapediafeedback-button-label",
 				"saintapediafeedback-hide",
@@ -86,25 +100,38 @@
 				"saintapediafeedback-error-captcha",
 				"saintapediafeedback-error-captcha-unavailable",
 				"saintapediafeedback-error-namespace",
-				"saintapediafeedback-public-counts"
+				"saintapediafeedback-public-counts",
+				"saintapediafeedback-suggest-handoff"
 			],
-			"dependencies": [ "mediawiki.api", "mediawiki.user", "mediawiki.util" ]
+			"dependencies": [
+				"mediawiki.api",
+				"mediawiki.user",
+				"mediawiki.util"
+			]
 		},
 		"ext.saintapediafeedback.special": {
 			"localBasePath": "modules/ext.saintapediafeedback.special",
 			"remoteExtPath": "SaintapediaFeedback/modules/ext.saintapediafeedback.special",
-			"scripts": [ "special.js" ],
-			"styles": [ "special.css" ]
+			"scripts": [
+				"special.js"
+			],
+			"styles": [
+				"special.css"
+			]
 		}
 	},
-	"ServiceWiringFiles": [ "includes/ServiceWiring.php" ],
+	"ServiceWiringFiles": [
+		"includes/ServiceWiring.php"
+	],
 	"config": {
 		"SaintapediaFeedbackMode": {
 			"value": "public",
 			"description": "Feedback mode: 'public' (anon-friendly, captcha-on by default, short form) or 'enterprise' (relaxed limits, captcha-off by default, long form, email)."
 		},
 		"SaintapediaFeedbackNamespaces": {
-			"value": [ 0 ],
+			"value": [
+				0
+			],
 			"description": "Namespaces where the widget is shown and the API accepts submissions. Default: main namespace only."
 		},
 		"SaintapediaFeedbackRateLimit": {
@@ -136,7 +163,9 @@
 			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to manage feedback. Missing/empty page → AccessGroups default."
 		},
 		"SaintapediaFeedbackAccessGroups": {
-			"value": [ "sysop" ],
+			"value": [
+				"sysop"
+			],
 			"description": "Default groups when the access page is missing or empty. Default is sysop (safe for public wikis). Set to ['user'] or put 'user' on the access page for option C (named accounts, not temps)."
 		},
 		"SaintapediaFeedbackEmailAccessPage": {
@@ -144,7 +173,9 @@
 			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to see the optional contact-email field. Separate from the dashboard access page/right so email can be locked to a smaller set than general feedback access. Missing/empty page falls back to EmailAccessGroups."
 		},
 		"SaintapediaFeedbackEmailAccessGroups": {
-			"value": [ "sysop" ],
+			"value": [
+				"sysop"
+			],
 			"description": "Default groups allowed to see the contact-email field when the email access page is missing or empty. Default is sysop, independent of SaintapediaFeedbackAccessGroups."
 		},
 		"SaintapediaFeedbackExportAccessPage": {
@@ -152,7 +183,9 @@
 			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to download the JSON export. Separate from the dashboard access page/right so bulk export can be locked to a smaller set than general feedback access. Missing/empty page falls back to ExportAccessGroups."
 		},
 		"SaintapediaFeedbackExportAccessGroups": {
-			"value": [ "sysop" ],
+			"value": [
+				"sysop"
+			],
 			"description": "Default groups allowed to export when the export access page is missing or empty. Default is sysop, independent of SaintapediaFeedbackAccessGroups."
 		},
 		"SaintapediaFeedbackRateLimitPage": {

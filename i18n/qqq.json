@@ -1,6 +1,8 @@
 {
 	"@metadata": {
-		"authors": [ "Saintapedia contributors" ]
+		"authors": [
+			"Saintapedia contributors"
+		]
 	},
 	"saintapediafeedback": "Special page name shown on Special:SpecialPages (canonical page name message key)",
 	"saintapediafeedback-desc": "Extension description shown on Special:Version",
@@ -116,5 +118,6 @@
 	"saintapediafeedback-talk-section-public": "Talk section when resolution was published. $1 id, $2 article, $3 resolutions link.",
 	"saintapediafeedback-talk-edit-summary": "Edit summary for Talk note. $1 = feedback id.",
 	"saintapediafeedback-talk-posted": "Success message after Talk note",
-	"saintapediafeedback-talk-failed": "Error message if Talk edit failed"
+	"saintapediafeedback-talk-failed": "Error message if Talk edit failed",
+	"saintapediafeedback-suggest-handoff": "Button inside the feedback panel that hands the reader over to a field-level suggestion tool (such as SaintapediaSuggest). Only shown when such a tool is installed and the page has structured fields to correct."
 }

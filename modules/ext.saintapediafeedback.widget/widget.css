@@ -564,3 +564,32 @@ body.spf-panel-open {
 .spf-mode-enterprise .spf-fab-tab {
 	background: #1d4f2a;
 }
+
+/*
+ * Hand-off to a field-level suggestion tool. Hidden unless something answers
+ * the readiness hook, so a wiki without one sees nothing.
+ */
+.spf-suggest-handoff {
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid #eaecf0;
+	text-align: center;
+}
+
+.spf-suggest-handoff[ hidden ] {
+	display: none;
+}
+
+.spf-suggest-link {
+	background: none;
+	border: none;
+	padding: 0;
+	color: #3366cc;
+	font-size: 0.8125rem;
+	cursor: pointer;
+	text-decoration: underline;
+}
+
+.spf-suggest-link:hover {
+	color: #447ff5;
+}
