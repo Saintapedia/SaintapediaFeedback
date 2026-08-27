@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Standalone unit suite: the pure helpers. Runs anywhere PHP and PHPUnit are
+	available, with no MediaWiki install and no database.
+
+		phpunit -c phpunit.xml.dist
+
+	The integration suite under tests/phpunit/integration/ is deliberately NOT
+	listed here. Those tests extend MediaWikiIntegrationTestCase and must run
+	through MediaWiki's own runner, which needs core's require-dev packages:
+
+		php vendor/bin/phpunit
+
+	restricted to the SaintapediaFeedback group. Production images (Canasta
+	among them) ship without those dev dependencies, so the integration suite
+	cannot run on one until they are installed.
+-->
 <phpunit
 	bootstrap="tests/phpunit/bootstrap.php"
 	colors="true"
