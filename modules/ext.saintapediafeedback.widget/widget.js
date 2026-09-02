@@ -286,6 +286,34 @@
 		var errorMsg  = el( 'div', { class: 'spf-error', role: 'alert', 'aria-live': 'assertive' } );
 		var successEl = el( 'div', { class: 'spf-success', hidden: true } );
 
+		/*
+		 * Hand-off to a field-level suggestion tool, when one is installed and
+		 * this page has structured data worth correcting.
+		 *
+		 * This panel is for prose problems ("the article is out of date"). A
+		 * wrong phone number in an infobox is a different job, and asking for
+		 * it here produces a free-text report an editor has to translate by
+		 * hand. Hidden by default and revealed only if something answers the
+		 * readiness hook, so nothing changes on a wiki without such a tool.
+		 */
+		var suggestRow = el( 'div', { class: 'spf-suggest-handoff', hidden: true } );
+		var suggestBtn = el( 'button', {
+			type: 'button',
+			class: 'spf-suggest-link',
+			onclick: function () {
+				closePanel();
+				mw.hook( 'saintapediasuggest.open' ).fire();
+			}
+		}, [ mw.msg( 'saintapediafeedback-suggest-handoff' ) ] );
+		suggestRow.appendChild( suggestBtn );
+
+		mw.hook( 'saintapediasuggest.ready' ).add( function ( info ) {
+			// Only worth offering when that tool has something to offer.
+			if ( info && info.fieldCount > 0 ) {
+				suggestRow.hidden = false;
+			}
+		} );
+
 		var formBody = el( 'div', { class: 'spf-form-body' }, [
 			el( 'p', { class: 'spf-subtitle' }, [ mw.msg( 'saintapediafeedback-panel-subtitle' ) ] ),
 			categoryGroup,
@@ -293,7 +321,8 @@
 			emailRow,
 			captchaRow,
 			errorMsg,
-			el( 'div', { class: 'spf-actions' }, [ submitBtn, cancelBtn ] )
+			el( 'div', { class: 'spf-actions' }, [ submitBtn, cancelBtn ] ),
+			suggestRow
 		] );
 
 		// Panel

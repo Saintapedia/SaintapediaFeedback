@@ -130,5 +130,6 @@
 	"saintapediafeedback-history-what": "Column header: the status transition. {{Identical|Change}}",
 	"saintapediafeedback-history-note": "Column header: the reviewer note recorded with a status change. {{Identical|Note}}",
 	"saintapediafeedback-history-unknown-user": "Shown in the status history when the acting user cannot be resolved.",
-	"saintapediafeedback-back-to-dashboard": "Link from the single-item view back to the full dashboard."
+	"saintapediafeedback-back-to-dashboard": "Link from the single-item view back to the full dashboard.",
+	"saintapediafeedback-suggest-handoff": "Button inside the feedback panel that hands the reader over to a field-level suggestion tool (such as SaintapediaSuggest). Only shown when such a tool is installed and the page has structured fields to correct."
 }

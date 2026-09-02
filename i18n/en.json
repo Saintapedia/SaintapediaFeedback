@@ -130,5 +130,6 @@
 	"saintapediafeedback-history-what": "Change",
 	"saintapediafeedback-history-note": "Note",
 	"saintapediafeedback-history-unknown-user": "(unknown user)",
-	"saintapediafeedback-back-to-dashboard": "All feedback"
+	"saintapediafeedback-back-to-dashboard": "All feedback",
+	"saintapediafeedback-suggest-handoff": "Correcting a specific fact instead?"
 }
