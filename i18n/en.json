@@ -1,6 +1,8 @@
 {
 	"@metadata": {
-		"authors": [ "Saintapedia contributors" ]
+		"authors": [
+			"Saintapedia contributors"
+		]
 	},
 	"saintapediafeedback": "Article feedback",
 	"saintapediafeedback-desc": "Floating feedback widget for article improvement suggestions",
@@ -116,5 +118,17 @@
 	"saintapediafeedback-talk-section-public": "Feedback '''#$1''' on $2 was marked as actioned and a public resolution was published. See $3.",
 	"saintapediafeedback-talk-edit-summary": "Note: feedback #$1 actioned (link to public resolutions)",
 	"saintapediafeedback-talk-posted": "A short link was added on the Talk page.",
-	"saintapediafeedback-talk-failed": "Could not update the Talk page (check edit permissions or try again)."
+	"saintapediafeedback-talk-failed": "Could not update the Talk page (check edit permissions or try again).",
+	"saintapediafeedback-detail-link": "History",
+	"saintapediafeedback-detail-title": "Feedback #$1",
+	"saintapediafeedback-unknown-item": "No feedback with ID $1 exists.",
+	"saintapediafeedback-page-feedback-link": "All feedback for this page",
+	"saintapediafeedback-history-heading": "Status history",
+	"saintapediafeedback-history-empty": "No status changes recorded yet.",
+	"saintapediafeedback-history-when": "When",
+	"saintapediafeedback-history-who": "Who",
+	"saintapediafeedback-history-what": "Change",
+	"saintapediafeedback-history-note": "Note",
+	"saintapediafeedback-history-unknown-user": "(unknown user)",
+	"saintapediafeedback-back-to-dashboard": "All feedback"
 }

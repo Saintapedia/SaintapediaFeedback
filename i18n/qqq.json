@@ -1,6 +1,8 @@
 {
 	"@metadata": {
-		"authors": [ "Saintapedia contributors" ]
+		"authors": [
+			"Saintapedia contributors"
+		]
 	},
 	"saintapediafeedback": "Special page name shown on Special:SpecialPages (canonical page name message key)",
 	"saintapediafeedback-desc": "Extension description shown on Special:Version",
@@ -116,5 +118,17 @@
 	"saintapediafeedback-talk-section-public": "Talk section when resolution was published. $1 id, $2 article, $3 resolutions link.",
 	"saintapediafeedback-talk-edit-summary": "Edit summary for Talk note. $1 = feedback id.",
 	"saintapediafeedback-talk-posted": "Success message after Talk note",
-	"saintapediafeedback-talk-failed": "Error message if Talk edit failed"
+	"saintapediafeedback-talk-failed": "Error message if Talk edit failed",
+	"saintapediafeedback-detail-link": "Link from a feedback item in the list to its own page, which shows the full status history.",
+	"saintapediafeedback-detail-title": "Page title of the single-item view. Parameters:\n* $1 - feedback ID",
+	"saintapediafeedback-unknown-item": "Shown when a feedback ID in the URL does not exist. Parameters:\n* $1 - the feedback ID",
+	"saintapediafeedback-page-feedback-link": "Link from the single-item view to the per-article list.",
+	"saintapediafeedback-history-heading": "Heading above the audit-log table on the single-item view.",
+	"saintapediafeedback-history-empty": "Shown when an item has no rows in the audit log — either it was never processed, or it predates the audit patch.",
+	"saintapediafeedback-history-when": "Column header: timestamp of a status change. {{Identical|When}}",
+	"saintapediafeedback-history-who": "Column header: user who made a status change. {{Identical|Who}}",
+	"saintapediafeedback-history-what": "Column header: the status transition. {{Identical|Change}}",
+	"saintapediafeedback-history-note": "Column header: the reviewer note recorded with a status change. {{Identical|Note}}",
+	"saintapediafeedback-history-unknown-user": "Shown in the status history when the acting user cannot be resolved.",
+	"saintapediafeedback-back-to-dashboard": "Link from the single-item view back to the full dashboard."
 }
