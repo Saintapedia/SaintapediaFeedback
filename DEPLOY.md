@@ -1,6 +1,6 @@
 # SaintapediaFeedback production deploy
 
-**Stable release: v1.8.0** — pin prod to this tag (or a newer `v1.8.x`).
+**Stable release: v1.8.1** — pin prod to this tag (or a newer `v1.8.x`).
 Do not track floating `main`.
 
 See [CHANGELOG.md](./CHANGELOG.md) for what changed.
@@ -11,7 +11,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for what changed.
 
    ```bash
    cd /path/to/mediawiki/w/extensions   # or user-extensions on Canasta
-   git clone --branch v1.8.0 --depth 1 \
+   git clone --branch v1.8.1 --depth 1 \
      https://github.com/Saintapedia/SaintapediaFeedback.git SaintapediaFeedback
    ```
 
