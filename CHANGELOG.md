@@ -11,7 +11,8 @@ Versions before 1.8.0 were not changelogged; their history is in git.
 - **MediaWiki 1.45 special-page titles.** `OutputPage::setPageTitle()` no
   longer accepts a `Message` (T343994). Special:SaintapediaFeedback crashed
   with `ParameterTypeException: Bad value for parameter $name: must be a
-  string`. All title-setting sites now use `setPageTitleMsg()`.
+  string`. Titles go through `setPageTitleMsg()` on MW 1.41+, with a
+  `method_exists` fallback so the declared `>= 1.39.0` floor still works.
 
 ### Tests
 

@@ -38,4 +38,13 @@ class Mw145PageTitleCompatibilityTest extends TestCase {
 			'Pass Message objects to setPageTitleMsg(), not setPageTitle() (MW 1.45 T343994)'
 		);
 	}
+
+	public function testSetPageTitleMsgHasMw139Fallback(): void {
+		$src = file_get_contents( dirname( __DIR__, 3 ) . '/includes/Special/SpecialFeedback.php' );
+		$this->assertMatchesRegularExpression(
+			'/method_exists\s*\(\s*\$\w+\s*,\s*[\'"]setPageTitleMsg[\'"]\s*\)/',
+			$src,
+			'setPageTitleMsg() is MW 1.41+; keep a method_exists fallback while requires is >= 1.39.0'
+		);
+	}
 }
