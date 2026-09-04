@@ -21,6 +21,10 @@ class Mw145PageTitleCompatibilityTest extends TestCase {
 				continue;
 			}
 			$src = file_get_contents( $file->getPathname() );
+			// Heuristic: only flags inline $this->msg() / wfMessage() / $var->msg()
+			// as the direct argument. A Message stored in a variable first, or
+			// Message::newFromKey(), would not match — those patterns are not
+			// used in this codebase today.
 			if ( preg_match(
 				'/->setPageTitle\s*\(\s*(?:\$this->msg|wfMessage|\$\w+->msg)\s*\(/s',
 				$src
