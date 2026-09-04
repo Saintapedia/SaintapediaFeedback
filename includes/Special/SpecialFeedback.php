@@ -146,7 +146,7 @@ class SpecialFeedback extends SpecialPage {
 
 	private function showDashboard(): void {
 		$out = $this->getOutput();
-		$out->setPageTitle( $this->msg( 'saintapediafeedback-dashboard-title' ) );
+		$out->setPageTitleMsg( $this->msg( 'saintapediafeedback-dashboard-title' ) );
 
 		// Help editors find the access config page
 		$accessTitle = FeedbackAccess::getAccessPageTitle();
@@ -256,12 +256,12 @@ class SpecialFeedback extends SpecialPage {
 		$title = $this->titleFromId( $pageId );
 
 		if ( !$title ) {
-			$out->setPageTitle( $this->msg( 'saintapediafeedback-special-title' ) );
+			$out->setPageTitleMsg( $this->msg( 'saintapediafeedback-special-title' ) );
 			$out->addWikiMsg( 'saintapediafeedback-special-notfound' );
 			return;
 		}
 
-		$out->setPageTitle( $this->msg( 'saintapediafeedback-special-page-title', $title->getPrefixedText() ) );
+		$out->setPageTitleMsg( $this->msg( 'saintapediafeedback-special-page-title', $title->getPrefixedText() ) );
 		$out->addBacklinkSubtitle( $this->getPageTitle() );
 		$out->addSubtitle(
 			Html::element( 'a', [ 'href' => $title->getLocalURL() ], $title->getPrefixedText() )
@@ -336,7 +336,7 @@ class SpecialFeedback extends SpecialPage {
 			return;
 		}
 
-		$out->setPageTitle( $this->msg( 'saintapediafeedback-detail-title' )->numParams( $fbId )->text() );
+		$out->setPageTitleMsg( $this->msg( 'saintapediafeedback-detail-title' )->numParams( $fbId ) );
 
 		$links = $this->getLinkRenderer()->makeLink(
 			$this->getPageTitle(),
@@ -642,19 +642,19 @@ class SpecialFeedback extends SpecialPage {
 		}
 
 		if ( !$pageId ) {
-			$out->setPageTitle( $this->msg( 'saintapediafeedback-resolutions-title' ) );
+			$out->setPageTitleMsg( $this->msg( 'saintapediafeedback-resolutions-title' ) );
 			$out->addWikiMsg( 'saintapediafeedback-resolutions-need-page' );
 			return;
 		}
 
 		$title = $this->titleFromId( $pageId );
 		if ( !$title ) {
-			$out->setPageTitle( $this->msg( 'saintapediafeedback-resolutions-title' ) );
+			$out->setPageTitleMsg( $this->msg( 'saintapediafeedback-resolutions-title' ) );
 			$out->addWikiMsg( 'saintapediafeedback-special-notfound' );
 			return;
 		}
 
-		$out->setPageTitle(
+		$out->setPageTitleMsg(
 			$this->msg( 'saintapediafeedback-resolutions-page-title', $title->getPrefixedText() )
 		);
 		$out->addSubtitle( Html::element( 'a', [ 'href' => $title->getLocalURL() ],

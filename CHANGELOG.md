@@ -4,6 +4,24 @@ Releases are tagged. Pin a production wiki to a tag, not to floating `main`.
 
 Versions before 1.8.0 were not changelogged; their history is in git.
 
+## 1.8.1 — 2026-09-04
+
+### Fixes
+
+- **MediaWiki 1.45 special-page titles.** `OutputPage::setPageTitle()` no
+  longer accepts a `Message` (T343994). Special:SaintapediaFeedback crashed
+  with `ParameterTypeException: Bad value for parameter $name: must be a
+  string`. All title-setting sites now use `setPageTitleMsg()`.
+
+### Tests
+
+- Source-level regression test scans `includes/` so a `Message` cannot be
+  passed to `setPageTitle()` again.
+
+### Upgrade notes
+
+No `update.php`. No configuration changes.
+
 ## 1.8.0 — 2026-09-02
 
 ### Features
