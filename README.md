@@ -361,6 +361,8 @@ $wgSaintapediaFeedbackEnableTalkLink = true;
 
 ## Version
 
+See [CHANGELOG.md](CHANGELOG.md) for 1.8.0 and later.
+
 **1.7.3** — operator wiki page paste target is `Project:SaintapediaFeedback` (not mainspace), so the widget does not appear on the cheat-sheet. Draft: [docs/wiki/Project-SaintapediaFeedback.wiki](docs/wiki/Project-SaintapediaFeedback.wiki).
 
 **1.7.2** — overlay-read warnings say `failing closed` only for captcha; the other knobs log `using PHP value`. Operator wiki page draft originally shipped as a mainspace paste; 1.7.3 moves it to Project:.
