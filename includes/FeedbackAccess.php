@@ -19,13 +19,18 @@ use User;
  * FeedbackWikiConfig.)
  *
  * Special tokens:
- * - sysop — administrators [default; matches saintapediafeedback-view]
- * - user  — any persistent named account (not temp / IP); opt-in option C
+ * - sysop — administrators [default in public mode; matches saintapediafeedback-view]
+ * - user  — any persistent named account (not temp / IP); default in enterprise mode (option C)
  * - *     — everyone including anons (rarely appropriate; never honored for
  *           email access — see getAllowedEmailGroups())
  * - autoconfirmed, editor, … — normal MediaWiki groups
  *
- * Default when the config var is unset or empty: [ 'sysop' ].
+ * Default for dashboard access (getAllowedGroups()) when
+ * $wgSaintapediaFeedbackAccessGroups is unset or empty is mode-dependent —
+ * see defaultGroupsForMode(): [ 'sysop' ] for public mode, [ 'user' ] for
+ * enterprise mode. Email and export access (getAllowedEmailGroups() /
+ * getAllowedExportGroups()) do NOT follow mode; their unset/empty default
+ * is always [ 'sysop' ], regardless of $wgSaintapediaFeedbackMode.
  * Users who hold saintapediafeedback-view via LocalSettings always pass.
  */
 class FeedbackAccess {

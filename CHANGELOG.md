@@ -51,7 +51,12 @@ requested behavior change.
   Replaced `sha256(ip . $wgSecretKey)` with an HMAC over a dedicated,
   rotatable secret (`$wgSaintapediaFeedbackIpHashSecret`, falls back to
   `$wgSecretKey` if unset) plus a UTC-date bucket, so the same address
-  hashes differently each day.
+  hashes differently each day. The rate-limit count now checks both
+  today's and yesterday's hash for the same address, so the day-bucketed
+  hash doesn't turn the cap into a UTC-midnight reset — an earlier draft
+  of this fix missed that a client could otherwise submit up to the limit
+  just before midnight and the limit again just after, doubling the
+  effective daily cap in under a minute; caught in review before merge.
 - **Moderation status updates are now concurrency-safe.** `updateStatus()`
   used to read-then-unconditionally-overwrite; two racing moderators could
   silently clobber each other's transition history. Now guarded by an
@@ -84,6 +89,15 @@ requested behavior change.
   (option C). If you want to keep it sysop-only, set
   `$wgSaintapediaFeedbackAccessGroups = [ 'sysop' ];` explicitly before
   upgrading. Public mode is unaffected either way.
+  **This also affects Echo notifications**: `$wgSaintapediaFeedbackNotifyWatchers`
+  defaults to `true` and filters recipients through the same dashboard-access
+  check, so a named account that gains dashboard access this way also starts
+  receiving Echo alerts on new submissions for pages it watches (the alert
+  itself never contains the raw comment — F-04 — but the comment is one click
+  away once someone has dashboard access). If you don't want that expansion,
+  either pin `AccessGroups` to `[ 'sysop' ]` or set `NotifyWatchers = false`
+  before upgrading. Email and export access are unaffected either way — they
+  stay sysop-only regardless of mode.
 - If you relied on `MediaWiki:SaintapediaFeedback-access`,
   `-email-access`, `-export-access`, `-ratelimit`, or `-require-captcha`
   pages to configure this extension, **those pages now do nothing.** Move

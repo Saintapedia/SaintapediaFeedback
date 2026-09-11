@@ -51,24 +51,37 @@ class ExpireContactEmails extends Maintenance {
 		);
 		$limit = max( 1, (int)$this->getOption( 'limit', 500 ) );
 
-		if ( $days < 1 ) {
-			$this->fatalError(
-				'Retention is disabled: $wgSaintapediaFeedbackContactEmailRetentionDays is 0 '
-					. 'and no --days was given. Set one of those to a positive number of days, '
-					. 'or use --dry-run --days N to preview without changing the config.'
-			);
-		}
-
 		/** @var \MediaWiki\Extension\SaintapediaFeedback\FeedbackStore $store */
 		$store = $services->getService( 'SaintapediaFeedback.FeedbackStore' );
 
+		// --dry-run always works, even with retention disabled (days < 1) —
+		// it never writes, so there's nothing for the disabled-by-default
+		// gate below to protect. Matches the documented invocation example
+		// and lets an operator preview what a --days value would do before
+		// touching $wgSaintapediaFeedbackContactEmailRetentionDays.
 		if ( $dryRun ) {
+			if ( $days < 1 ) {
+				$this->output(
+					"Dry run: retention is disabled (\$wgSaintapediaFeedbackContactEmailRetentionDays "
+						. "is 0 and no --days was given). Nothing would be cleared. Pass --days N to "
+						. "preview a specific window, e.g. --dry-run --days 90.\n"
+				);
+				return;
+			}
 			$count = $store->countExpirableContactEmails( $days );
 			$this->output(
 				"Dry run: {$count} row(s) have a contact email older than {$days} day(s) and "
 					. "would be cleared. No changes made.\n"
 			);
 			return;
+		}
+
+		if ( $days < 1 ) {
+			$this->fatalError(
+				'Retention is disabled: $wgSaintapediaFeedbackContactEmailRetentionDays is 0 '
+					. 'and no --days was given. Set one of those to a positive number of days, '
+					. 'or use --dry-run to preview without changing the config.'
+			);
 		}
 
 		$total = 0;
