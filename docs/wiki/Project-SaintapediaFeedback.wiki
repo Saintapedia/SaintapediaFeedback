@@ -1,10 +1,10 @@
 <!--
   Paste this onto the wiki as [[Project:SaintapediaFeedback]].
   Source of truth in the extension repo: docs/wiki/Project-SaintapediaFeedback.wiki
-  Requires SaintapediaFeedback 1.7.3+. The "who can see what" and on-wiki config
+  Requires SaintapediaFeedback 1.9.0+. The "who can see what" and on-wiki config
   sections below reflect the 2026-09-10 review (F-08): access, email-access,
   export-access, rate limit, and CAPTCHA-required moved to LocalSettings.php
-  only. See CHANGELOG.md's Unreleased section for the version that shipped this.
+  only, as of 1.9.0 — see CHANGELOG.md.
 -->
 = SaintapediaFeedback =
 

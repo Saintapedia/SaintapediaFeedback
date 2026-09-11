@@ -1,9 +1,7 @@
 <!--
   Paste this on mediawiki.org as [[Extension:SaintapediaFeedback]].
   Source of truth in the extension repo: docs/wiki/Extension-SaintapediaFeedback.wiki
-  Reflects SaintapediaFeedback main as of the 2026-09-10 review remediation
-  (PR #25) — see CHANGELOG.md's Unreleased section. Style follows
-  Extension:SaintapediaDrilldown.
+  Reflects SaintapediaFeedback 1.9.0. Style follows Extension:SaintapediaDrilldown.
 
   Not the same page as docs/wiki/Project-SaintapediaFeedback.wiki — that one is
   the operator cheat-sheet pasted on your own wiki as Project:SaintapediaFeedback.
@@ -20,8 +18,8 @@
 | description     = Reader-facing "Improve this article" feedback widget with an editor triage dashboard
 | author          = [[User:PhotographerTom|Tom O'Neill]], Saintapedia contributors
 | maintainer      = [[User:PhotographerTom|Tom O'Neill]]
-| version         = main (unreleased)
-| update          = 2026-09-10
+| version         = 1.9.0
+| update          = 2026-09-11
 | mediawiki       = 1.39+
 | php             = 7.4+
 | needs-updatephp = Yes

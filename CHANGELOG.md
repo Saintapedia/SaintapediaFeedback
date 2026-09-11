@@ -4,11 +4,11 @@ Releases are tagged. Pin a production wiki to a tag, not to floating `main`.
 
 Versions before 1.8.0 were not changelogged; their history is in git.
 
-## Unreleased
+## 1.9.0 — 2026-09-11
 
 Fixes for a 2026-09-10 external code review (source-verified against this repo;
-[PR #25](https://github.com/Saintapedia/SaintapediaFeedback/pull/25)), plus one
-requested behavior change.
+[PR #25](https://github.com/Saintapedia/SaintapediaFeedback/pull/25), independently
+re-reviewed and approved), plus one requested behavior change.
 
 ### Features
 
