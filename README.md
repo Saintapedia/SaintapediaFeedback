@@ -282,7 +282,7 @@ vars only.
 - CSRF + POST-only API; blocked users/IPs denied.
 - hCaptcha when required (fail closed if misconfigured).
 - Per-IP rate limit (hashed IP only; counted on the primary DB).
-- Optional contact email is stored plaintext (so editors can follow up). Dashboard list queries do not select email or IP hash.
+- Optional contact email is stored plaintext (so editors can follow up). Dashboard list queries do not select email or IP hash. Set `$wgSaintapediaFeedbackContactEmailRetentionDays` and schedule `maintenance/ExpireContactEmails.php` to clear it automatically after a retention window (default: retention disabled).
 - Namespace allowlist on API and widget.
 - Status changes: POST + edit token; bulk same.
 - Review UI is never public.

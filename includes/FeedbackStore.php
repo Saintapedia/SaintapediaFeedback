@@ -328,6 +328,68 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 	}
 
 	/**
+	 * @param IDatabase $db
+	 * @return array<int,string>
+	 */
+	private function expirableEmailConds( IDatabase $db, int $days ): array {
+		$cutoff = $db->timestamp( time() - ( $days * 86400 ) );
+		return [
+			'fb_contact_email IS NOT NULL',
+			'fb_timestamp < ' . $db->addQuotes( $cutoff ),
+		];
+	}
+
+	/**
+	 * How many rows currently have a contact email older than $days,
+	 * without clearing anything. For --dry-run previews.
+	 */
+	public function countExpirableContactEmails( int $days ): int {
+		if ( $days < 1 ) {
+			return 0;
+		}
+		$db = $this->loadBalancer->getConnection( DB_REPLICA );
+		return (int)$db->selectField(
+			'spf_feedback',
+			'COUNT(*)',
+			$this->expirableEmailConds( $db, $days ),
+			__METHOD__
+		);
+	}
+
+	/**
+	 * Clears fb_contact_email (sets it NULL) on rows older than $days,
+	 * leaving the rest of the row — status, categories, comment, audit
+	 * history — intact (F-09). Batches in groups of $limit so a large
+	 * backlog on first run doesn't take one huge lock.
+	 *
+	 * @return int Number of rows cleared this call (may be less than the
+	 *   full eligible set when it exceeds $limit; call again to continue)
+	 */
+	public function expireContactEmails( int $days, int $limit = 500 ): int {
+		if ( $days < 1 ) {
+			return 0;
+		}
+		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
+		$ids = $db->selectFieldValues(
+			'spf_feedback',
+			'fb_id',
+			$this->expirableEmailConds( $db, $days ),
+			__METHOD__,
+			[ 'LIMIT' => max( 1, $limit ) ]
+		);
+		if ( !$ids ) {
+			return 0;
+		}
+		$db->update(
+			'spf_feedback',
+			[ 'fb_contact_email' => null ],
+			[ 'fb_id' => array_map( 'intval', $ids ) ],
+			__METHOD__
+		);
+		return count( $ids );
+	}
+
+	/**
 	 * Update workflow status for a feedback row and append an audit log entry.
 	 *
 	 * When $pageId is provided, the row must belong to that page (prevents

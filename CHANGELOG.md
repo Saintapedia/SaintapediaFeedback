@@ -54,6 +54,11 @@ Fixes for a 2026-09-10 external code review (source-verified against this repo;
   411/400, oversized → 400) instead of raising or under-checking; requests
   time out after 30s; the sidecar refuses to start on a non-loopback bind
   without a token configured.
+- **Contact-email retention.** New `maintenance/ExpireContactEmails.php` plus
+  `$wgSaintapediaFeedbackContactEmailRetentionDays` (default `0` = disabled)
+  clears `fb_contact_email` on rows past a configurable age, leaving the rest
+  of the row intact. Nothing runs automatically until an operator sets a
+  retention window and schedules the job.
 
 ### Docs
 

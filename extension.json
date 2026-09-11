@@ -150,6 +150,10 @@
 			"value": false,
 			"description": "Show optional contact email field (automatically enabled in enterprise mode)."
 		},
+		"SaintapediaFeedbackContactEmailRetentionDays": {
+			"value": 0,
+			"description": "Days after submission before maintenance/ExpireContactEmails.php clears fb_contact_email (sets it NULL; the rest of the feedback row is kept). 0 = disabled (default; the job refuses to run non-dry-run without --days or this set). Only relevant when SaintapediaFeedbackEnableEmail is/was on."
+		},
 		"SaintapediaFeedbackRequireCaptcha": {
 			"value": null,
 			"description": "Require hCaptcha via ConfirmEdit. null = auto (true for public mode, false for enterprise). true/false overrides. LocalSettings.php only — not wiki-page overridable (security control, F-08)."

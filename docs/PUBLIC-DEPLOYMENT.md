@@ -100,8 +100,14 @@ Before enabling it on a public site:
 
 - Confirm this fits your privacy policy / GDPR (or equivalent) posture —
   you're now collecting PII from anonymous visitors.
-- Have a retention/deletion plan for old rows, since nothing in the extension
-  ages out old feedback automatically.
+- Decide a retention window and set
+  `$wgSaintapediaFeedbackContactEmailRetentionDays` (default `0` = disabled).
+  Schedule `maintenance/ExpireContactEmails.php` (cron/systemd, same as the
+  LLM job) to clear `fb_contact_email` on rows past that age — it clears only
+  the email field, leaving the rest of the feedback row (status, categories,
+  comment, audit history) intact. `--dry-run` previews a count without
+  changing anything. This does not reach backup snapshots taken before a row
+  was cleared; that's a separate backup-rotation decision.
 - List queries never select this column (`FeedbackStore::exportDashboard` /
   the dashboard list view don't project it), and the **JSON export does not
   include it either** — export omits contact email and IP hash the same way
