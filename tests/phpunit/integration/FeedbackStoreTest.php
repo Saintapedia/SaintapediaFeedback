@@ -94,11 +94,29 @@ class FeedbackStoreTest extends MediaWikiIntegrationTestCase {
 		);
 	}
 
-	public function testCountRecentByIpHashIsPerAddress(): void {
+	public function testCountRecentByIpHashesIsPerAddress(): void {
 		$this->store->insert( $this->row( [ 'ipHash' => str_repeat( 'c', 64 ) ] ) );
 		$this->store->insert( $this->row( [ 'ipHash' => str_repeat( 'c', 64 ) ] ) );
-		$this->assertSame( 2, $this->store->countRecentByIpHash( str_repeat( 'c', 64 ) ) );
-		$this->assertSame( 0, $this->store->countRecentByIpHash( str_repeat( 'd', 64 ) ) );
+		$this->assertSame( 2, $this->store->countRecentByIpHashes( [ str_repeat( 'c', 64 ) ] ) );
+		$this->assertSame( 0, $this->store->countRecentByIpHashes( [ str_repeat( 'd', 64 ) ] ) );
+	}
+
+	/**
+	 * F-07 follow-up: the rolling 24h window must still work when a
+	 * caller passes both today's and the prior UTC day's hash for the
+	 * same address — rows under either hash count toward the same cap.
+	 */
+	public function testCountRecentByIpHashesCountsAcrossMultipleHashes(): void {
+		$this->store->insert( $this->row( [ 'ipHash' => str_repeat( 'e', 64 ) ] ) );
+		$this->store->insert( $this->row( [ 'ipHash' => str_repeat( 'f', 64 ) ] ) );
+		$this->assertSame(
+			2,
+			$this->store->countRecentByIpHashes( [ str_repeat( 'e', 64 ), str_repeat( 'f', 64 ) ] )
+		);
+	}
+
+	public function testCountRecentByIpHashesWithNoHashesIsZero(): void {
+		$this->assertSame( 0, $this->store->countRecentByIpHashes( [] ) );
 	}
 
 	/* ------------------------------------------------------------ privacy */

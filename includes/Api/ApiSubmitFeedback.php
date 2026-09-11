@@ -82,6 +82,14 @@ class ApiSubmitFeedback extends ApiBase {
 				->getMainConfig()->get( 'SecretKey' );
 		}
 		$ipHash = IpHasher::hash( $ip, $ipHashSecret );
+		// Also hash under yesterday's UTC bucket: the day-bucketed hash
+		// means a plain "count rows with today's hash" would reset the cap
+		// at every UTC midnight instead of rolling, letting a client submit
+		// up to the limit just before midnight and the limit again just
+		// after. Checking both hashes over the same 24h window closes that
+		// without giving up the day-bucketing itself (still F-07's win:
+		// no indefinitely linkable identifier).
+		$ipHashYesterday = IpHasher::hash( $ip, $ipHashSecret, gmdate( 'Y-m-d', time() - 86400 ) );
 		// LocalSettings.php only (F-08, 2026-09-10 review): a MediaWiki:-page
 		// override existed here before, letting anyone holding editinterface
 		// weaken the rate limit with a wiki edit and no deploy/code review.
@@ -118,6 +126,7 @@ class ApiSubmitFeedback extends ApiBase {
 			'title'        => $title->getDBkey(),
 			'userId'       => FeedbackAccess::isPersistentAccount( $user ) ? $user->getId() : null,
 			'ipHash'       => $ipHash,
+			'rateLimitHashes' => [ $ipHash, $ipHashYesterday ],
 			'categories'   => $categories,
 			'comment'      => $comment,
 			'contactEmail' => $contactEmail,

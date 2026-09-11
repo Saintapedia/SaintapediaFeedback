@@ -42,6 +42,7 @@
 	"saintapediafeedback-special-nofeedback": "Shown when a page has no feedback yet",
 	"saintapediafeedback-special-categories": "Prefix label before the list of reported categories on a feedback row",
 	"saintapediafeedback-status-updated": "Confirmation message after changing a feedback row's status",
+	"saintapediafeedback-status-conflict": "Error shown after a single-item status update POST when FeedbackStore::updateStatus() returns false (F-05's optimistic-concurrency guard missed, or the row/page id no longer matches) — a well-formed request whose row could not actually be updated, distinct from a malformed request that is simply ignored.",
 	"saintapediafeedback-action-reviewed": "Button to mark a feedback item as reviewed",
 	"saintapediafeedback-action-actioned": "Button to mark a feedback item as actioned (resolved)",
 	"saintapediafeedback-action-dismissed": "Button to dismiss a feedback item",

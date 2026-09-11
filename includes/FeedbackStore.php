@@ -60,13 +60,20 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 		if ( $ipHash === '' || $limit < 1 ) {
 			return null;
 		}
+		// $data['rateLimitHashes'], when supplied, is today's hash plus the
+		// prior UTC day's hash for the same address (F-07 buckets the hash
+		// by day, so a plain single-hash count would only ever see rows
+		// since the last UTC midnight — not a rolling 24h window; see
+		// countRecentByIpHashes()). Falls back to just $ipHash for callers
+		// that don't supply it.
+		$rateLimitHashes = $data['rateLimitHashes'] ?? [ $ipHash ];
 		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
 		$lockName = 'spf-rl-' . substr( $ipHash, 0, 40 );
 		$scopedLock = $db->getScopedLockAndFlush( $lockName, __METHOD__, 3 );
 		if ( !$scopedLock ) {
 			return null;
 		}
-		if ( $this->countRecentByIpHash( $ipHash, $db ) >= $limit ) {
+		if ( $this->countRecentByIpHashes( $rateLimitHashes, $db ) >= $limit ) {
 			return null;
 		}
 		return $this->insertOn( $db, $data );
@@ -124,18 +131,32 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 	}
 
 	/**
-	 * Count submissions from a given IP hash within the past 24 hours.
+	 * Count submissions matching any of the given IP hashes within the
+	 * past 24 hours.
 	 *
+	 * Since F-07 buckets the hash by UTC calendar day, a single address's
+	 * hash changes at every UTC midnight — so a rolling 24h count needs to
+	 * check both the current bucket's hash and the prior day's, or a
+	 * client could submit up to $limit just before midnight and $limit
+	 * again just after, doubling the effective daily cap in under a
+	 * minute. Callers should pass [ todayHash, yesterdayHash ] for the
+	 * same address/secret (see ApiSubmitFeedback); a single-element array
+	 * still works but only sees the current UTC day.
+	 *
+	 * @param string[] $ipHashes
 	 * @param IDatabase|null $db Primary connection when called under tryInsertUnderLimit
 	 */
-	public function countRecentByIpHash( string $ipHash, ?IDatabase $db = null ): int {
+	public function countRecentByIpHashes( array $ipHashes, ?IDatabase $db = null ): int {
+		if ( !$ipHashes ) {
+			return 0;
+		}
 		$db ??= $this->loadBalancer->getConnection( DB_PRIMARY );
 		$cutoff = $db->timestamp( time() - 86400 );
 		return (int)$db->selectField(
 			'spf_feedback',
 			'COUNT(*)',
 			[
-				'fb_ip_hash'    => $ipHash,
+				'fb_ip_hash'    => $ipHashes,
 				'fb_timestamp > ' . $db->addQuotes( $cutoff ),
 			],
 			__METHOD__

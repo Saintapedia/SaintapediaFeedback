@@ -42,6 +42,7 @@
 	"saintapediafeedback-special-nofeedback": "No feedback submitted for this article yet.",
 	"saintapediafeedback-special-categories": "Issues reported:",
 	"saintapediafeedback-status-updated": "Status updated.",
+	"saintapediafeedback-status-conflict": "Couldn't update this item — it may have changed since the page loaded, or no longer exists. Check its current status below and try again.",
 	"saintapediafeedback-action-reviewed": "Mark reviewed",
 	"saintapediafeedback-action-actioned": "Mark actioned",
 	"saintapediafeedback-action-dismissed": "Dismiss",
