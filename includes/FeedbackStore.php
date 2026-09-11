@@ -45,6 +45,14 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 	 * Serializes same-hash submits with a named lock so concurrent COUNTs
 	 * cannot all pass (including the first-row empty-range case).
 	 *
+	 * Uses getScopedLockAndFlush() rather than plain lock()/unlock(): the
+	 * scoped lock's release is tied to this transaction's commit/rollback,
+	 * not to when the PHP object happens to be destroyed. A plain unlock()
+	 * runs immediately after insert() returns, which can be before the
+	 * insert's own transaction commits — a second request could then
+	 * acquire the lock and count rows before the first request's row is
+	 * visible, letting concurrent submissions exceed $limit.
+	 *
 	 * @return int|null New id, or null when over the limit / lock unavailable
 	 */
 	public function tryInsertUnderLimit( array $data, int $limit ): ?int {
@@ -54,17 +62,14 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 		}
 		$db = $this->loadBalancer->getConnection( DB_PRIMARY );
 		$lockName = 'spf-rl-' . substr( $ipHash, 0, 40 );
-		if ( !$db->lock( $lockName, __METHOD__, 3 ) ) {
+		$scopedLock = $db->getScopedLockAndFlush( $lockName, __METHOD__, 3 );
+		if ( !$scopedLock ) {
 			return null;
 		}
-		try {
-			if ( $this->countRecentByIpHash( $ipHash, $db ) >= $limit ) {
-				return null;
-			}
-			return $this->insertOn( $db, $data );
-		} finally {
-			$db->unlock( $lockName, __METHOD__ );
+		if ( $this->countRecentByIpHash( $ipHash, $db ) >= $limit ) {
+			return null;
 		}
+		return $this->insertOn( $db, $data );
 	}
 
 	private function insertOn( IDatabase $db, array $data ): int {
