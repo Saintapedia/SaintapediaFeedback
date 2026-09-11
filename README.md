@@ -7,7 +7,10 @@ MediaWiki extension: floating **“Improve this article”** widget for readers,
 | **Readers** | Submit without an account (public mode), with hCaptcha, rate limits, and block checks. Hide the floating button (× or long-press) for this tab; restore from the screen-edge tab or **Tools → Improve this article** |
 | **Editors** | Dashboard + toolbox link (`saintapediafeedback-view`, granted to **sysop** by default). Seeing the contact email and downloading the JSON export each need their own separate right (`saintapediafeedback-viewemail`, `saintapediafeedback-export`), also sysop by default |
 
-Requires **MediaWiki ≥ 1.39**.
+Requires **MediaWiki ≥ 1.39** (minimum code-compatibility floor, tested against; not a
+production recommendation — MediaWiki 1.39 reached end-of-life and no longer receives
+security updates. Deploy against a [currently supported MediaWiki branch](https://www.mediawiki.org/wiki/Version_lifecycle)
+whenever possible).
 
 ---
 
