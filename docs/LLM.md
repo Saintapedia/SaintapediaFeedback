@@ -92,9 +92,13 @@ php maintenance/run.php extensions/SaintapediaFeedback/maintenance/ProcessFeedba
 
 | Config | Default | Role |
 |--------|---------|------|
-| `$wgSaintapediaFeedbackLlmWebhook` | `''` | POST target; empty disables the job unless `--webhook` |
+| `$wgSaintapediaFeedbackEnableLlm` | `false` | Master switch. When `false`, non-dry-run processing refuses to post or mark rows — `--webhook` cannot override this |
+| `$wgSaintapediaFeedbackLlmWebhook` | `''` | POST target; empty also fails a non-dry-run unless `--webhook` is passed (but `EnableLlm` is checked first) |
 | `$wgSaintapediaFeedbackLlmWebhookToken` | `''` | Optional `Authorization: Bearer …` |
 | `$wgSaintapediaFeedbackLlmBatchSize` | `100` | Default `--limit` (capped at 500) |
+
+`--dry-run` always works regardless of `EnableLlm` — it only enumerates and prints the batch,
+never posts or marks rows processed.
 
 PHP surface (unit-tested, no MW required):
 
@@ -106,6 +110,32 @@ PHP surface (unit-tested, no MW required):
 `--dry-run` prints the batch JSON and does not POST or flip flags. Non-2xx leaves rows pending (idempotent retry).
 
 The webhook is provider-agnostic. This repo ships a SpaceXAI sidecar in [`sidecar/`](../sidecar/README.md): it reads the JSON, calls `https://api.x.ai/v1/responses` with `XAI_API_KEY` (model `grok-4.6` by default, `store: false`), writes suggestions under `sidecar/out/`, and never changes `fb_status`. The wiki never holds the model key.
+
+## Activation checklist
+
+Before setting `$wgSaintapediaFeedbackEnableLlm = true` anywhere outside a throwaway dev
+environment, the following are still open (2026-09-10 code review, findings F-03/F-06):
+
+- [ ] **Exact-ID / schema validation.** `FeedbackLlmBatchRunner` currently marks the *entire*
+      requested batch processed on any HTTP 2xx from the webhook — it never inspects the
+      response body. The sidecar's own validation only checks that each item is a dict with
+      four required keys; it does not check ID membership, uniqueness, types, or enum values.
+      A malformed or wrong-ID model response is silently accepted. Needs: the poster to return
+      status *and* parsed body; the sidecar to return an explicit `accepted_ids` list; the
+      runner to mark only acknowledged IDs.
+- [ ] **Sidecar network hardening**, if the sidecar will be reachable from anything other than
+      `127.0.0.1` — see [`sidecar/README.md`](../sidecar/README.md) for what's already covered
+      (`Content-Length` validation, request timeout, mandatory token off-loopback) versus what
+      isn't (batch claim/lease so two maintenance runs can't process the same rows, idempotency
+      key / retry semantics).
+- [ ] **Provider/data-handling review** — confirm what `FeedbackLlmPayload::fromRow()` sends
+      the model is acceptable under the provider's retention/privacy terms for this wiki.
+- [ ] No scheduler/cron entry for `ProcessFeedbackLlm.php` until the above are resolved and
+      the decision to activate has been made explicitly (not just by setting a webhook).
+
+`$wgSaintapediaFeedbackEnableLlm` defaults to `false` specifically so none of this is a
+prerequisite for shipping the rest of the extension — the gate exists so activation is a
+deliberate, documented step, not an accident of an empty-string default.
 
 ## What is *not* implemented yet
 
