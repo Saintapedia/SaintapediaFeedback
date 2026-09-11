@@ -28,8 +28,8 @@ Dashboard: [[Special:SaintapediaFeedback]] (or Toolbox → '''Page feedback''' o
 ! What it does
 |-
 | <code>saintapediafeedback-view</code>
-| sysop
-| Open the dashboard, process rows, bulk-action. Also granted by <code>$wgSaintapediaFeedbackAccessGroups</code> (LocalSettings.php).
+| sysop (public mode) / any named account (enterprise mode)
+| Open the dashboard, process rows, bulk-action. Also granted by <code>$wgSaintapediaFeedbackAccessGroups</code> (LocalSettings.php) — set it explicitly to override either mode's default.
 |-
 | <code>saintapediafeedback-viewemail</code>
 | sysop
@@ -42,14 +42,14 @@ Dashboard: [[Special:SaintapediaFeedback]] (or Toolbox → '''Page feedback''' o
 
 A block revokes dashboard access immediately, even for sysop.
 
-'''Locking email or export to nobody''' takes two steps: revoke the sysop right in LocalSettings '''and''' set the matching <code>*AccessGroups</code> array to a dummy token such as <code>['no-one']</code>. An empty/unset array is not "nobody" — it falls back to sysop.
+'''Locking email or export to nobody''' takes two steps: revoke the sysop right in LocalSettings '''and''' set the matching <code>*AccessGroups</code> array to a dummy token such as <code>['no-one']</code>. An empty/unset array is not "nobody" for email/export — it always falls back to sysop, regardless of mode. (Dashboard access's empty/unset fallback is mode-dependent — see the table above.)
 
 == Security settings (LocalSettings.php only) ==
 
 Access, email-access, export-access, the rate limit, and CAPTCHA-required are '''not''' configurable from a wiki page (2026-09-10 review, F-08): editing a <code>MediaWiki:</code> page needs only <code>editinterface</code>, with no deploy or code review, which is too low a bar for anti-abuse and access controls. Set these directly:
 
 <pre>
-$wgSaintapediaFeedbackAccessGroups = [ 'sysop' ];        // or [ 'user' ] for any named account
+$wgSaintapediaFeedbackAccessGroups = [ 'sysop' ];        // unset = mode default (sysop public, user enterprise)
 $wgSaintapediaFeedbackEmailAccessGroups = [ 'sysop' ];    // '*' is always ignored here
 $wgSaintapediaFeedbackExportAccessGroups = [ 'sysop' ];
 $wgSaintapediaFeedbackRateLimit = 5;                      // public mode, per hashed IP per day

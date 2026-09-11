@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::isPersistentAccount
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::groupsGrantAccess
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::withoutPublicWildcard
+ * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::defaultGroupsForMode
  */
 class FeedbackAccessParseTest extends TestCase {
 
@@ -100,6 +101,22 @@ TEXT;
 		$temp = new FakeIdentityUser( true, true );
 		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [ 'sysop' ], $temp ) );
 		$this->assertTrue( FeedbackAccess::groupsGrantAccess( [ 'sysop' ], $temp, [ 'sysop' ] ) );
+	}
+
+	/**
+	 * Enterprise wikis default dashboard access to any named account
+	 * (option C) rather than public mode's sysop-only default.
+	 */
+	public function testDefaultGroupsForModePicksUserForEnterprise(): void {
+		$this->assertSame( [ 'user' ], FeedbackAccess::defaultGroupsForMode( 'enterprise' ) );
+	}
+
+	public function testDefaultGroupsForModePicksSysopForPublicAndUnknownModes(): void {
+		$this->assertSame( [ 'sysop' ], FeedbackAccess::defaultGroupsForMode( 'public' ) );
+		// Anything that isn't literally 'enterprise' is treated as public,
+		// same as $wgSaintapediaFeedbackMode's own documented behavior.
+		$this->assertSame( [ 'sysop' ], FeedbackAccess::defaultGroupsForMode( '' ) );
+		$this->assertSame( [ 'sysop' ], FeedbackAccess::defaultGroupsForMode( 'nonsense' ) );
 	}
 
 	/**

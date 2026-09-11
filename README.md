@@ -89,6 +89,12 @@ $wgSaintapediaFeedbackMode = 'enterprise';
 // $wgSaintapediaFeedbackRequireCaptcha = true; // force captcha if desired
 ```
 
+Dashboard access also defaults differently in this mode: any named account
+(option C) can open it, not just sysop — see
+[Who can use the dashboard?](#who-can-use-the-dashboard) below. Set
+`$wgSaintapediaFeedbackAccessGroups = [ 'sysop' ];` explicitly if you want
+sysop-only even in enterprise mode.
+
 ---
 
 ## Editor workflow
@@ -117,22 +123,36 @@ show-public-counts, and enable-Talk-link stay wiki-overridable — see
 [On-wiki config for operational settings](#on-wiki-config-for-operational-settings-no-deploy)
 below — because they're operational preferences, not security controls.
 
-### Default (administrators)
+### Default (mode-dependent)
 
-If `$wgSaintapediaFeedbackAccessGroups` is unset or empty, only **sysop** (and
-anyone granted `saintapediafeedback-view`) can open the dashboard. Anons, temp
-accounts, and ordinary named accounts cannot.
+If `$wgSaintapediaFeedbackAccessGroups` is unset or empty, the default depends
+on `$wgSaintapediaFeedbackMode`:
+
+- **public mode**: only **sysop** (and anyone granted `saintapediafeedback-view`)
+  can open the dashboard. Anons, temp accounts, and ordinary named accounts
+  cannot.
+- **enterprise mode**: any named account (option C — not temp, not anon) can
+  open the dashboard, on the assumption that an intranet wiki has many more
+  trusted logged-in staff than a public wiki's sysop-only default fits.
+
+Set `$wgSaintapediaFeedbackAccessGroups` explicitly to override either mode's
+default:
 
 ```php
-// PHP default (already ['sysop'])
+// Explicit sysop-only, regardless of mode
 $wgSaintapediaFeedbackAccessGroups = [ 'sysop' ];
-// Intranet / option C — any named account (not temp):
+// Explicit option C — any named account (not temp), regardless of mode:
 // $wgSaintapediaFeedbackAccessGroups = [ 'user' ];
 
 // Always-on via right (still subject to blocks) — sysop has this by default
 $wgGroupPermissions['sysop']['saintapediafeedback-view'] = true;
 $wgGroupPermissions['editor']['saintapediafeedback-view'] = true;
 ```
+
+`$wgSaintapediaFeedbackEmailAccessGroups` and `ExportAccessGroups` do **not**
+follow mode — they default to sysop regardless of `$wgSaintapediaFeedbackMode`,
+matching the existing "separate, more restrictive by default" design for
+email visibility and bulk export (see below).
 
 | Token / group | Meaning |
 |---------------|---------|

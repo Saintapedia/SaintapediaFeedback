@@ -217,12 +217,36 @@ class FeedbackAccess {
 
 	/**
 	 * Groups currently allowed to open the dashboard (from
-	 * $wgSaintapediaFeedbackAccessGroups, or DEFAULT_GROUPS when unset).
+	 * $wgSaintapediaFeedbackAccessGroups; when unset, defaultGroupsForMode()
+	 * picks sysop for public mode or user for enterprise mode).
 	 *
 	 * @return string[]
 	 */
 	public static function getAllowedGroups(): array {
-		return self::configuredGroups( 'SaintapediaFeedbackAccessGroups', self::DEFAULT_GROUPS );
+		$config = MediaWikiServices::getInstance()->getMainConfig();
+		$groups = $config->get( 'SaintapediaFeedbackAccessGroups' );
+		if ( is_array( $groups ) && $groups ) {
+			return array_values( $groups );
+		}
+		return self::defaultGroupsForMode( (string)$config->get( 'SaintapediaFeedbackMode' ) );
+	}
+
+	/**
+	 * Mode-aware fallback for getAllowedGroups() when
+	 * $wgSaintapediaFeedbackAccessGroups is unset/empty. Enterprise wikis
+	 * are intranets with many more trusted logged-in staff than a public
+	 * wiki's sysop-only default fits, so they default to any named account
+	 * (option C) instead. Pure; unit-testable.
+	 *
+	 * Deliberately does NOT apply to getAllowedEmailGroups()/
+	 * getAllowedExportGroups() — those stay sysop-only regardless of mode,
+	 * matching the existing "separate, more restrictive by default" design
+	 * for email visibility and bulk export (see their own doc comments).
+	 *
+	 * @return string[]
+	 */
+	public static function defaultGroupsForMode( string $mode ): array {
+		return $mode === 'enterprise' ? [ 'user' ] : self::DEFAULT_GROUPS;
 	}
 
 	/**

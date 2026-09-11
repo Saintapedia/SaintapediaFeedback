@@ -7,7 +7,19 @@ Versions before 1.8.0 were not changelogged; their history is in git.
 ## Unreleased
 
 Fixes for a 2026-09-10 external code review (source-verified against this repo;
-[PR #25](https://github.com/Saintapedia/SaintapediaFeedback/pull/25)).
+[PR #25](https://github.com/Saintapedia/SaintapediaFeedback/pull/25)), plus one
+requested behavior change.
+
+### Features
+
+- **Enterprise mode defaults dashboard access to any named account.** When
+  `$wgSaintapediaFeedbackAccessGroups` is unset, the default is now
+  mode-dependent: sysop-only for public mode (unchanged), `['user']` (option
+  C, any named account, not temp/anon) for enterprise mode. Intranet wikis
+  generally have far more trusted logged-in staff than a public wiki's
+  sysop-only default fits. Email and export access are unaffected — they
+  stay sysop-only regardless of mode. Set `$wgSaintapediaFeedbackAccessGroups`
+  explicitly to override either mode's default.
 
 ### Security / privacy fixes
 
@@ -67,6 +79,11 @@ Fixes for a 2026-09-10 external code review (source-verified against this repo;
 
 ### Upgrade notes
 
+- **If you run enterprise mode and have never set `$wgSaintapediaFeedbackAccessGroups`,
+  dashboard access widens on upgrade** — from sysop-only to any named account
+  (option C). If you want to keep it sysop-only, set
+  `$wgSaintapediaFeedbackAccessGroups = [ 'sysop' ];` explicitly before
+  upgrading. Public mode is unaffected either way.
 - If you relied on `MediaWiki:SaintapediaFeedback-access`,
   `-email-access`, `-export-access`, `-ratelimit`, or `-require-captcha`
   pages to configure this extension, **those pages now do nothing.** Move

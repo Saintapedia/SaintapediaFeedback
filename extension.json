@@ -167,10 +167,8 @@
 			"description": "Optional single email address to notify on each new submission (requires $wgEnableEmail / $wgSMTP). false disables."
 		},
 		"SaintapediaFeedbackAccessGroups": {
-			"value": [
-				"sysop"
-			],
-			"description": "Groups allowed to manage feedback. Default is sysop (safe for public wikis). Set to ['user'] for option C (named accounts, not temps). LocalSettings.php only — not wiki-page overridable (F-08)."
+			"value": [],
+			"description": "Groups allowed to manage feedback. Empty (default) picks a mode-appropriate default: sysop for public mode, user (any named account, not temps — option C) for enterprise mode, via FeedbackAccess::defaultGroupsForMode(). Set explicitly to override either mode's default. LocalSettings.php only — not wiki-page overridable (F-08)."
 		},
 		"SaintapediaFeedbackEmailAccessGroups": {
 			"value": [
