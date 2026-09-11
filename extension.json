@@ -220,9 +220,13 @@
 			"value": true,
 			"description": "When true, show an optional checkbox on actioned to append a short Talk-page note linking to public resolutions (never dumps work notes or raw reader comments)."
 		},
+		"SaintapediaFeedbackEnableLlm": {
+			"value": false,
+			"description": "Master switch for automated LLM triage. Default false: ProcessFeedbackLlm.php refuses to post or mark rows processed outside --dry-run, even if --webhook is passed on the command line. Set true only after reviewing docs/LLM.md's activation checklist."
+		},
 		"SaintapediaFeedbackLlmWebhook": {
 			"value": "",
-			"description": "HTTPS URL that receives POST JSON {count,items} of pending feedback. Empty disables the maintenance script unless --webhook is passed."
+			"description": "HTTPS URL that receives POST JSON {count,items} of pending feedback. Ignored for non-dry-run posting unless SaintapediaFeedbackEnableLlm is also true."
 		},
 		"SaintapediaFeedbackLlmWebhookToken": {
 			"value": "",

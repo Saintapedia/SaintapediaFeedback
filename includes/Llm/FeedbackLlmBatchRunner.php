@@ -22,7 +22,13 @@ class FeedbackLlmBatchRunner {
 	 *   count:int,ids:int[],items:array,status:?int,marked:bool,error:?string
 	 * }
 	 */
-	public function run( string $webhook, int $limit, bool $dryRun, string $token = '' ): array {
+	public function run(
+		string $webhook,
+		int $limit,
+		bool $dryRun,
+		string $token = '',
+		bool $enabled = false
+	): array {
 		$limit = max( 1, min( $limit, 500 ) );
 		$empty = [
 			'count'  => 0,
@@ -32,6 +38,15 @@ class FeedbackLlmBatchRunner {
 			'marked' => false,
 			'error'  => null,
 		];
+
+		// $enabled is the policy gate: false means LLM processing is disabled
+		// regardless of what webhook value was supplied (LocalSettings or
+		// --webhook). Checked before the webhook-unconfigured case so a
+		// command-line override can never bypass the disabled state.
+		if ( !$dryRun && !$enabled ) {
+			$empty['error'] = 'llm-disabled';
+			return $empty;
+		}
 
 		if ( !$dryRun && $webhook === '' ) {
 			$empty['error'] = 'webhook-unconfigured';
