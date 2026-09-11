@@ -8,6 +8,7 @@ use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig;
+use MediaWiki\Extension\SaintapediaFeedback\IpHasher;
 use MediaWiki\MediaWikiServices;
 use TitleFactory;
 use Wikimedia\ParamValidator\ParamValidator;
@@ -71,12 +72,17 @@ class ApiSubmitFeedback extends ApiBase {
 			$this->dieWithError( 'saintapediafeedback-error-captcha', 'spf-captcha' );
 		}
 
-		// Rate limiting — hash the IP, never log the raw value
-		$ip     = $request->getIP();
-		$ipHash = hash(
-			'sha256',
-			$ip . MediaWikiServices::getInstance()->getMainConfig()->get( 'SecretKey' )
-		);
+		// Rate limiting — hash the IP, never log the raw value. Uses a
+		// dedicated secret (falling back to $wgSecretKey if unset) plus a
+		// UTC-date bucket so the hash is not a stable, indefinitely
+		// linkable identifier for one address (F-07).
+		$ip = $request->getIP();
+		$ipHashSecret = (string)$config->get( 'SaintapediaFeedbackIpHashSecret' );
+		if ( $ipHashSecret === '' ) {
+			$ipHashSecret = (string)MediaWikiServices::getInstance()
+				->getMainConfig()->get( 'SecretKey' );
+		}
+		$ipHash = IpHasher::hash( $ip, $ipHashSecret );
 		$phpLimit = $mode === 'enterprise'
 			? $config->get( 'SaintapediaFeedbackEnterpriseRateLimit' )
 			: $config->get( 'SaintapediaFeedbackRateLimit' );

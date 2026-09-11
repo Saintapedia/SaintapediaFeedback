@@ -142,6 +142,10 @@
 			"value": 50,
 			"description": "Max feedback submissions per IP per day in enterprise mode."
 		},
+		"SaintapediaFeedbackIpHashSecret": {
+			"value": "",
+			"description": "Dedicated secret for the rate-limit IP hash. Empty falls back to $wgSecretKey. Set a dedicated value so this hash can be rotated independently of the global application secret; keep it in LocalSettings.php or the environment, never on a wiki page."
+		},
 		"SaintapediaFeedbackEnableEmail": {
 			"value": false,
 			"description": "Show optional contact email field (automatically enabled in enterprise mode)."
