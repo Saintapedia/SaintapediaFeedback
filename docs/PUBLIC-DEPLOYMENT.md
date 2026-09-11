@@ -59,30 +59,34 @@ point — loosen them deliberately, not by habit.
 accounts all get a permission error on `Special:SaintapediaFeedback`.
 
 If you want any logged-in (non-temp) account to triage feedback, that's an
-explicit opt-in ("Option C"), done on-wiki without a deploy:
+explicit opt-in ("Option C"), set in `LocalSettings.php`:
 
-1. Log in as an admin (or `interface-admin`) and edit
-   `MediaWiki:SaintapediaFeedback-access`.
-2. Put `user` on its own line.
-
-```
-# Administrators (default)
-sysop
-
-# Option C — any named account (not temp):
-user
+```php
+// Option C — any named account (not temp):
+$wgSaintapediaFeedbackAccessGroups = [ 'user' ];
 ```
 
-Don't set this to `*` (everyone, including anons) on a public wiki — that
-hands dashboard access and bulk-process to anyone who loads the page,
+Don't set this to `['*']` (everyone, including anons) on a public wiki —
+that hands dashboard access and bulk-process to anyone who loads the page,
 including the raw comment/category text of every submission. It does **not**
 by itself grant bulk JSON export or contact-email visibility — those are
 separate rights (`saintapediafeedback-export`, `saintapediafeedback-viewemail`,
-each defaulting to sysop) with their own access pages, described below.
+each defaulting to sysop) with their own group lists, described below.
+(`*` is accepted here — dashboard access can be made public if you really
+want that — but it is never honored for email access; see below.)
+
+As of the 2026-09-10 code review (F-08), this and the two settings below are
+**`LocalSettings.php` only** — they used to also be overridable from a
+`MediaWiki:`-namespace page editable by anyone holding `editinterface`, with
+no deploy or code review. That override is gone for access, email-access,
+export-access, the rate limit, and CAPTCHA-required specifically, because
+they're security controls; the remaining on-wiki settings (notify list,
+show-public-counts, enable-Talk-link) are operational preferences and stay
+wiki-configurable.
 
 A block on a user revokes dashboard access immediately, even for someone who
-otherwise matches `sysop` or the access page — you do not need to also strip
-their group membership to shut off a compromised or abusive account.
+otherwise matches `sysop` or a configured group — you do not need to also
+strip their group membership to shut off a compromised or abusive account.
 
 ## 4. Decide about the contact-email field
 
@@ -109,10 +113,11 @@ Before enabling it on a public site:
 If you don't need it, leave it off — it's the lowest-friction privacy choice.
 
 If you *do* enable it, decide who should pass `saintapediafeedback-viewemail`
-/ `MediaWiki:SaintapediaFeedback-email-access` — that check, not general
-dashboard access, is what actually controls visibility now. See
+/ `$wgSaintapediaFeedbackEmailAccessGroups` — that check, not general
+dashboard access, is what actually controls visibility now. It can never be
+made public (a `*` token is always stripped, however it's configured — see
 [README.md § Locking down the contact-email field separately](../README.md#locking-down-the-contact-email-field-separately)
-for the two-step process if you want to restrict it below the sysop default.
+for the two-step process if you want to restrict it below the sysop default).
 
 ## 5. Set who gets notified
 
@@ -164,24 +169,22 @@ from your homepage or announcing it anywhere:
   MediaWiki blocking. A block immediately revokes both submit access and,
   if applicable, dashboard access (§3) — you don't need a separate
   extension-specific ban list.
-- **On-wiki overrides**: rate limit, notify-user list, captcha-required,
-  public counts, and the Talk-link flag can each be set from a `MediaWiki:`
-  page instead of `LocalSettings.php` — see [README.md § On-wiki config for
+- **On-wiki overrides**: notify-user list, public counts, and the Talk-link
+  flag can each be set from a `MediaWiki:` page instead of
+  `LocalSettings.php` — see [README.md § On-wiki config for
   operational settings](../README.md#on-wiki-config-for-operational-settings-no-deploy)
   and the paste-ready operator page
   [Project-SaintapediaFeedback.wiki](wiki/Project-SaintapediaFeedback.wiki)
   (paste as `Project:SaintapediaFeedback`, not mainspace — the widget’s
   default namespace list is `[0]`, so a mainspace cheat-sheet would get
   its own “Improve this article” button).
-  Captcha **and** the rate-limit page are security controls: anyone with
-  `editinterface` can flip them without a deploy. On a public wiki, leave
-  those two pages **blank** and keep the values in LocalSettings. If you do
-  create `MediaWiki:SaintapediaFeedback-require-captcha`, re-run the §6
-  fail-closed check after any edit to that page. A cache/DB blip reading
-  the captcha page logs `failing closed` and keeps captcha required; a blip
-  reading any of the other four knobs logs `using PHP value` and falls back
-  to LocalSettings (rate-limit `0` is *not* that fallback — `0` rejects
-  every submit; delete the page to revert).
+  Rate limit and captcha-required are **not** on this list (2026-09-10
+  review, F-08): they're security controls and are `LocalSettings.php`
+  only, precisely so anyone with `editinterface` can't flip them without a
+  deploy. Set `$wgSaintapediaFeedbackRequireCaptcha` /
+  `$wgSaintapediaFeedbackRateLimit` directly. A cache/DB blip reading any of
+  the remaining three on-wiki knobs logs `using PHP value` and falls back to
+  LocalSettings.
 - **Rate-limit tuning**: `$wgSaintapediaFeedbackRateLimit` (default 5/day) is
   per hashed-IP. It will not stop an attacker rotating IPs or using a VPN —
   hCaptcha is your real backstop against scripted abuse, not the rate limit.
@@ -205,7 +208,8 @@ from your homepage or announcing it anywhere:
 Running the same codebase on several public wikis? Per domain, confirm:
 
 - [ ] Its own hCaptcha site key/secret (§1) — never reused across domains.
-- [ ] Its own `SaintapediaFeedback-access` page reviewed, not inherited by
-      accident from a shared LocalSettings default.
+- [ ] Its own `$wgSaintapediaFeedbackAccessGroups` (and Email/ExportAccessGroups)
+      reviewed, not inherited by accident from a shared LocalSettings default
+      meant for a different domain.
 - [ ] Its own notify list (§5) — an admin on wiki A is not automatically
       watching wiki B.

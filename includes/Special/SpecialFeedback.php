@@ -43,7 +43,7 @@ class SpecialFeedback extends SpecialPage {
 	}
 
 	/**
-	 * Allow access via MediaWiki:SaintapediaFeedback-access groups (default: sysop),
+	 * Allow access via $wgSaintapediaFeedbackAccessGroups (default: sysop),
 	 * or the saintapediafeedback-view right.
 	 *
 	 * @param User $user
@@ -164,19 +164,6 @@ class SpecialFeedback extends SpecialPage {
 	private function showDashboard(): void {
 		$out = $this->getOutput();
 		$this->setLocalizedPageTitle( $this->msg( 'saintapediafeedback-dashboard-title' ) );
-
-		// Help editors find the access config page
-		$accessTitle = FeedbackAccess::getAccessPageTitle();
-		if ( $accessTitle ) {
-			$out->addSubtitle(
-				$this->msg( 'saintapediafeedback-access-help' )
-					->rawParams(
-						Html::element( 'a', [ 'href' => $accessTitle->getLocalURL() ],
-							$accessTitle->getPrefixedText() )
-					)
-					->parse()
-			);
-		}
 
 		$filters = $this->getFiltersFromRequest();
 		$limit = self::PAGE_SIZE;

@@ -4,6 +4,79 @@ Releases are tagged. Pin a production wiki to a tag, not to floating `main`.
 
 Versions before 1.8.0 were not changelogged; their history is in git.
 
+## Unreleased
+
+Fixes for a 2026-09-10 external code review (source-verified against this repo;
+[PR #25](https://github.com/Saintapedia/SaintapediaFeedback/pull/25)).
+
+### Security / privacy fixes
+
+- **Rate-limit race under concurrency.** The named lock guarding
+  `tryInsertUnderLimit()` could release before its insert's transaction
+  committed, letting concurrent requests exceed the configured limit. Now
+  uses `IDatabase::getScopedLockAndFlush()`, which ties release to
+  commit/rollback.
+- **Schema upgrade could abort with a duplicate-column error.** Two patches
+  both tried to add `spf_feedback_log.log_note`; a legacy install upgrading
+  through both in one `update.php` run could hit a duplicate-column error.
+  `patch-work-notes-public.sql` no longer touches `log_note` — `patch-log-note.sql`
+  is its sole owner.
+- **Access, email-access, and export-access are LocalSettings.php-only.**
+  These, plus the rate limit and CAPTCHA requirement, used to also be
+  overridable from `MediaWiki:`-namespace pages editable by anyone holding
+  `editinterface`, with no deploy or code review. That on-wiki override is
+  removed for these five settings. Notify-user list, show-public-counts, and
+  enable-Talk-link remain wiki-overridable (operational preferences, not
+  security controls).
+- **Contact email can never be made public.** `$wgSaintapediaFeedbackEmailAccessGroups`
+  now silently drops a `*` token (logging a warning) before the access check
+  runs, regardless of how it was configured — there is no way to make reader
+  email visible to anonymous/everyone.
+- **Raw reader comments no longer duplicated into Echo.** Echo event storage
+  used to carry up to 200 characters of the raw comment; notifications now
+  point recipients at the dashboard instead.
+- **IP hash is no longer a stable, indefinitely linkable identifier.**
+  Replaced `sha256(ip . $wgSecretKey)` with an HMAC over a dedicated,
+  rotatable secret (`$wgSaintapediaFeedbackIpHashSecret`, falls back to
+  `$wgSecretKey` if unset) plus a UTC-date bucket, so the same address
+  hashes differently each day.
+- **Moderation status updates are now concurrency-safe.** `updateStatus()`
+  used to read-then-unconditionally-overwrite; two racing moderators could
+  silently clobber each other's transition history. Now guarded by an
+  optimistic-concurrency `WHERE fb_status = $old`.
+- **LLM processing has an explicit disable gate.** New
+  `$wgSaintapediaFeedbackEnableLlm` (default `false`); non-dry-run processing
+  refuses to post or mark rows even if `--webhook` is passed on the command
+  line. The deeper F-03 validation gap (the runner trusts bare HTTP 2xx
+  instead of a verified per-ID acknowledgment) is still open and documented
+  as an activation blocker in `docs/LLM.md`.
+- **Sidecar hardening.** `Content-Length` is validated (missing/invalid →
+  411/400, oversized → 400) instead of raising or under-checking; requests
+  time out after 30s; the sidecar refuses to start on a non-loopback bind
+  without a token configured.
+
+### Docs
+
+- README distinguishes the MediaWiki 1.39 compatibility floor (tested
+  against, EOL) from a production recommendation.
+
+### Upgrade notes
+
+- If you relied on `MediaWiki:SaintapediaFeedback-access`,
+  `-email-access`, `-export-access`, `-ratelimit`, or `-require-captcha`
+  pages to configure this extension, **those pages now do nothing.** Move
+  the equivalent settings to `LocalSettings.php`
+  (`$wgSaintapediaFeedbackAccessGroups`, `EmailAccessGroups`,
+  `ExportAccessGroups`, `RateLimit`/`EnterpriseRateLimit`,
+  `RequireCaptcha`) before upgrading if you were using non-default values on
+  those pages.
+- `$wgSaintapediaFeedbackAccessPage`, `EmailAccessPage`, `ExportAccessPage`,
+  `RateLimitPage`, and `RequireCaptchaPage` no longer exist. Remove them from
+  `LocalSettings.php` if present — they are now unused, not just deprecated.
+- No `update.php` required for these changes (no schema change beyond the
+  F-02 migration-patch fix, which only affects a specific legacy upgrade
+  path).
+
 ## 1.8.1 — 2026-09-04
 
 ### Fixes

@@ -30,9 +30,10 @@ Raw IPs are **not** stored (only a hash for rate limiting). Contact email may be
 - `Special:SaintapediaFeedback/export` — current dashboard filters as JSON  
 - `Special:SaintapediaFeedback/export/<pageid>` — one page  
 
-Requires dashboard access (`saintapediafeedback-view` / access page) **and**
-the separate `saintapediafeedback-export` right / `MediaWiki:SaintapediaFeedback-export-access`
-page — a user who can open the dashboard but lacks the export right gets a
+Requires dashboard access (`saintapediafeedback-view` /
+`$wgSaintapediaFeedbackAccessGroups`) **and** the separate
+`saintapediafeedback-export` right / `$wgSaintapediaFeedbackExportAccessGroups`
+— a user who can open the dashboard but lacks the export right gets a
 permission error on these routes. Response shape:
 
 ```json

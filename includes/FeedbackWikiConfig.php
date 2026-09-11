@@ -6,8 +6,16 @@ use MediaWiki\MediaWikiServices;
 use Title;
 
 /**
- * Generic on-wiki override for non-secret operational knobs: rate limit,
- * notify-user list, captcha-required, show-public-counts, enable-talk-link.
+ * Generic on-wiki override for non-secret operational knobs: notify-user
+ * list, show-public-counts, enable-talk-link.
+ *
+ * Rate limit and CAPTCHA-required used to be on-wiki overridable here too;
+ * as of the 2026-09-10 review (F-08) they, along with dashboard/email/export
+ * access (see FeedbackAccess), are LocalSettings.php-only — anyone holding
+ * editinterface could previously weaken anti-abuse controls with a wiki edit
+ * and no deploy or code review. The remaining three settings here stay
+ * wiki-overridable because they are operational preferences, not security
+ * controls.
  *
  * Mirrors FeedbackAccess's MediaWiki:-page pattern: one page per setting,
  * PHP config is the fallback when the page is missing/empty, WAN-cached,
@@ -30,9 +38,7 @@ class FeedbackWikiConfig {
 	 */
 	public static function pages(): array {
 		return [
-			'SaintapediaFeedbackRateLimitPage' => 'SaintapediaFeedback-ratelimit',
 			'SaintapediaFeedbackNotifyUsersPage' => 'SaintapediaFeedback-notify-users',
-			'SaintapediaFeedbackRequireCaptchaPage' => 'SaintapediaFeedback-require-captcha',
 			'SaintapediaFeedbackShowPublicCountsPage' => 'SaintapediaFeedback-show-public-counts',
 			'SaintapediaFeedbackEnableTalkLinkPage' => 'SaintapediaFeedback-enable-talklink',
 		];
@@ -200,6 +206,11 @@ class FeedbackWikiConfig {
 	 * Resolve a non-negative int from overlay text. Pure; unit-testable.
 	 * `0` is a valid override (reject every submit); empty/unrecognized
 	 * text and read failures keep $phpValue.
+	 *
+	 * No current setting uses an effective-int wiki override (the rate
+	 * limit moved to LocalSettings-only, F-08) — kept as tested, side-
+	 * effect-free parsing logic for the next int-typed knob that needs it,
+	 * rather than paired with a same-shape effectiveInt() no page calls.
 	 */
 	public static function resolveInt( string $text, int $phpValue, bool $readFailed = false ): int {
 		if ( $readFailed ) {
@@ -210,15 +221,6 @@ class FeedbackWikiConfig {
 			return $phpValue;
 		}
 		return (int)$lines[0];
-	}
-
-	/** Effective int: on-wiki override wins when the page holds a non-negative integer. */
-	public static function effectiveInt( string $pageConfigKey, string $pageDefault, int $phpValue ): int {
-		[ $text, $readFailed, $error ] = self::loadText( $pageConfigKey, $pageDefault );
-		if ( $readFailed ) {
-			self::logOverlayReadFailure( $pageConfigKey, false, $error );
-		}
-		return self::resolveInt( $text, $phpValue, $readFailed );
 	}
 
 	/** Effective list (e.g. usernames): on-wiki override wins when the page has any lines. */

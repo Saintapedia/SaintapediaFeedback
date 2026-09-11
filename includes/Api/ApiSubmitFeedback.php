@@ -7,7 +7,6 @@ use MediaWiki\Extension\SaintapediaFeedback\CaptchaGate;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
-use MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig;
 use MediaWiki\Extension\SaintapediaFeedback\IpHasher;
 use MediaWiki\MediaWikiServices;
 use TitleFactory;
@@ -83,14 +82,12 @@ class ApiSubmitFeedback extends ApiBase {
 				->getMainConfig()->get( 'SecretKey' );
 		}
 		$ipHash = IpHasher::hash( $ip, $ipHashSecret );
-		$phpLimit = $mode === 'enterprise'
+		// LocalSettings.php only (F-08, 2026-09-10 review): a MediaWiki:-page
+		// override existed here before, letting anyone holding editinterface
+		// weaken the rate limit with a wiki edit and no deploy/code review.
+		$limit = (int)( $mode === 'enterprise'
 			? $config->get( 'SaintapediaFeedbackEnterpriseRateLimit' )
-			: $config->get( 'SaintapediaFeedbackRateLimit' );
-		$limit = FeedbackWikiConfig::effectiveInt(
-			'SaintapediaFeedbackRateLimitPage',
-			'SaintapediaFeedback-ratelimit',
-			(int)$phpLimit
-		);
+			: $config->get( 'SaintapediaFeedbackRateLimit' ) );
 
 		// Sanitize free text
 		$comment = $params['comment'] ?? null;

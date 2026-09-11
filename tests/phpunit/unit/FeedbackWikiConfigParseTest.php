@@ -74,9 +74,13 @@ TEXT;
 	}
 
 	public function testResolveBoolReadFailureUsesOnReadErrorWhenSet(): void {
-		// Captcha: overlay exception must not fall back to PHP=false.
+		// A caller that opts into fail-closed behavior via $onReadError=true
+		// (no current wiki-overridable setting does — require-captcha moved
+		// to LocalSettings-only, F-08 — but the pure function still supports
+		// it for a future security-relevant bool knob) must not fall back to
+		// $phpValue on a read failure.
 		$this->assertTrue( FeedbackWikiConfig::resolveBool( '', false, true, true ) );
-		// Without $onReadError, a failed read uses PHP (rate limit etc.).
+		// Without $onReadError, a failed read uses PHP (notify-users etc.).
 		$this->assertFalse( FeedbackWikiConfig::resolveBool( '', false, true, null ) );
 		$this->assertTrue( FeedbackWikiConfig::resolveBool( '', true, true, null ) );
 	}
@@ -99,10 +103,14 @@ TEXT;
 	}
 
 	public function testOverlayReadFailureMessageDistinguishesFailClosed(): void {
+		// Pure string formatting — the key doesn't need to name a real
+		// current setting; no wiki-overridable knob opts into fail-closed
+		// today (require-captcha moved to LocalSettings-only, F-08), but
+		// the formatter still supports a future one that does.
 		$this->assertSame(
-			'SaintapediaFeedback: wiki-config read failed for SaintapediaFeedbackRequireCaptchaPage; failing closed. boom',
+			'SaintapediaFeedback: wiki-config read failed for SomeFailClosedPage; failing closed. boom',
 			FeedbackWikiConfig::overlayReadFailureMessage(
-				'SaintapediaFeedbackRequireCaptchaPage',
+				'SomeFailClosedPage',
 				true,
 				'boom'
 			)

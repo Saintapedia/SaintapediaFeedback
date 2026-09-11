@@ -152,7 +152,7 @@
 		},
 		"SaintapediaFeedbackRequireCaptcha": {
 			"value": null,
-			"description": "Require hCaptcha via ConfirmEdit. null = auto (true for public mode, false for enterprise). true/false overrides per wiki."
+			"description": "Require hCaptcha via ConfirmEdit. null = auto (true for public mode, false for enterprise). true/false overrides. LocalSettings.php only — not wiki-page overridable (security control, F-08)."
 		},
 		"SaintapediaFeedbackNotifyUsers": {
 			"value": [],
@@ -162,47 +162,27 @@
 			"value": false,
 			"description": "Optional single email address to notify on each new submission (requires $wgEnableEmail / $wgSMTP). false disables."
 		},
-		"SaintapediaFeedbackAccessPage": {
-			"value": "SaintapediaFeedback-access",
-			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to manage feedback. Missing/empty page → AccessGroups default."
-		},
 		"SaintapediaFeedbackAccessGroups": {
 			"value": [
 				"sysop"
 			],
-			"description": "Default groups when the access page is missing or empty. Default is sysop (safe for public wikis). Set to ['user'] or put 'user' on the access page for option C (named accounts, not temps)."
-		},
-		"SaintapediaFeedbackEmailAccessPage": {
-			"value": "SaintapediaFeedback-email-access",
-			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to see the optional contact-email field. Separate from the dashboard access page/right so email can be locked to a smaller set than general feedback access. Missing/empty page falls back to EmailAccessGroups."
+			"description": "Groups allowed to manage feedback. Default is sysop (safe for public wikis). Set to ['user'] for option C (named accounts, not temps). LocalSettings.php only — not wiki-page overridable (F-08)."
 		},
 		"SaintapediaFeedbackEmailAccessGroups": {
 			"value": [
 				"sysop"
 			],
-			"description": "Default groups allowed to see the contact-email field when the email access page is missing or empty. Default is sysop, independent of SaintapediaFeedbackAccessGroups."
-		},
-		"SaintapediaFeedbackExportAccessPage": {
-			"value": "SaintapediaFeedback-export-access",
-			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to download the JSON export. Separate from the dashboard access page/right so bulk export can be locked to a smaller set than general feedback access. Missing/empty page falls back to ExportAccessGroups."
+			"description": "Groups allowed to see the contact-email field. Default is sysop, independent of SaintapediaFeedbackAccessGroups. LocalSettings.php only. A '*' token is never honored here regardless of how it's set — contact email can never be made visible to anonymous/everyone (F-08)."
 		},
 		"SaintapediaFeedbackExportAccessGroups": {
 			"value": [
 				"sysop"
 			],
-			"description": "Default groups allowed to export when the export access page is missing or empty. Default is sysop, independent of SaintapediaFeedbackAccessGroups."
-		},
-		"SaintapediaFeedbackRateLimitPage": {
-			"value": "SaintapediaFeedback-ratelimit",
-			"description": "MediaWiki-namespace page (DB key without prefix) holding a single integer that overrides the mode-appropriate rate limit (SaintapediaFeedbackRateLimit / EnterpriseRateLimit) without a deploy. Missing/empty/non-numeric page falls back to the PHP config."
+			"description": "Groups allowed to export. Default is sysop, independent of SaintapediaFeedbackAccessGroups. LocalSettings.php only — not wiki-page overridable (F-08)."
 		},
 		"SaintapediaFeedbackNotifyUsersPage": {
 			"value": "SaintapediaFeedback-notify-users",
 			"description": "MediaWiki-namespace page (DB key without prefix), one username per line, overriding SaintapediaFeedbackNotifyUsers without a deploy. Missing/empty page falls back to the PHP config."
-		},
-		"SaintapediaFeedbackRequireCaptchaPage": {
-			"value": "SaintapediaFeedback-require-captcha",
-			"description": "MediaWiki-namespace page (DB key without prefix) holding true/false to override SaintapediaFeedbackRequireCaptcha (and the mode-based auto default) without a deploy. Security-sensitive: editable by anyone with editinterface, not gated by code review. Missing/empty/unrecognized page falls back to the PHP config."
 		},
 		"SaintapediaFeedbackShowPublicCountsPage": {
 			"value": "SaintapediaFeedback-show-public-counts",
