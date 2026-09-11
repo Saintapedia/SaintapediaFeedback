@@ -390,10 +390,21 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 		}
 
 		$ts = $set['fb_status_timestamp'];
-		$db->update( 'spf_feedback', $set, $conds, __METHOD__ );
-		if ( !$db->affectedRows() && $old === $status ) {
-			// Status unchanged but notes may have updated
-			return true;
+
+		// Optimistic concurrency guard (F-05): only apply if fb_status is
+		// still what we just read. If a second request updated the row
+		// between our SELECT and this UPDATE, this WHERE no longer matches,
+		// affectedRows() is 0, and we report a conflict instead of silently
+		// overwriting the other change or logging a stale old status. This
+		// is safe without SELECT ... FOR UPDATE because the UPDATE itself
+		// takes the row lock, so two concurrent callers serialize on it and
+		// the second one's WHERE is evaluated against the already-committed
+		// state left by the first.
+		$updateConds = $conds;
+		$updateConds['fb_status'] = $old;
+		$db->update( 'spf_feedback', $set, $updateConds, __METHOD__ );
+		if ( !$db->affectedRows() ) {
+			return false;
 		}
 		if ( $old !== $status || $workNote !== null ) {
 			$this->insertStatusLog(
@@ -564,6 +575,16 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 		return $row ?: null;
 	}
 
+	/**
+	 * Writes one row to the append-only status-change log. This is
+	 * best-effort activity history, not a transactional audit trail
+	 * (F-05): a failure here is logged but deliberately does not roll back
+	 * or fail the status change that triggered it, since a moderation
+	 * action succeeding is more important than an unrelated logging-table
+	 * problem blocking it. Uses wfLogWarning() (not wfDebugLog()) so a
+	 * failure is visible in the default MediaWiki error log rather than
+	 * only when debug logging for this channel is explicitly enabled.
+	 */
 	private function insertStatusLog(
 		$db,
 		int $fbId,
@@ -589,7 +610,8 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 			}
 			$db->insert( 'spf_feedback_log', $row, __METHOD__ );
 		} catch ( \Throwable $e ) {
-			wfDebugLog( 'SaintapediaFeedback', 'audit log insert failed: ' . $e->getMessage() );
+			wfLogWarning( 'SaintapediaFeedback: audit log insert failed for fb_id=' . $fbId
+				. ': ' . $e->getMessage() );
 		}
 	}
 
