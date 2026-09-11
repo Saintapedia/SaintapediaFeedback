@@ -9,6 +9,8 @@ use PHPUnit\Framework\TestCase;
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::parseGroupList
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::isPersistentAccount
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::groupsGrantAccess
+ * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::withoutPublicWildcard
+ * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess::defaultGroupsForMode
  */
 class FeedbackAccessParseTest extends TestCase {
 
@@ -99,6 +101,58 @@ TEXT;
 		$temp = new FakeIdentityUser( true, true );
 		$this->assertFalse( FeedbackAccess::groupsGrantAccess( [ 'sysop' ], $temp ) );
 		$this->assertTrue( FeedbackAccess::groupsGrantAccess( [ 'sysop' ], $temp, [ 'sysop' ] ) );
+	}
+
+	/**
+	 * Enterprise wikis default dashboard access to any named account
+	 * (option C) rather than public mode's sysop-only default.
+	 */
+	public function testDefaultGroupsForModePicksUserForEnterprise(): void {
+		$this->assertSame( [ 'user' ], FeedbackAccess::defaultGroupsForMode( 'enterprise' ) );
+	}
+
+	public function testDefaultGroupsForModePicksSysopForPublicAndUnknownModes(): void {
+		$this->assertSame( [ 'sysop' ], FeedbackAccess::defaultGroupsForMode( 'public' ) );
+		// Anything that isn't literally 'enterprise' is treated as public,
+		// same as $wgSaintapediaFeedbackMode's own documented behavior.
+		$this->assertSame( [ 'sysop' ], FeedbackAccess::defaultGroupsForMode( '' ) );
+		$this->assertSame( [ 'sysop' ], FeedbackAccess::defaultGroupsForMode( 'nonsense' ) );
+	}
+
+	/**
+	 * F-08: contact-email visibility must never resolve to "everyone,
+	 * including anonymous readers" — withoutPublicWildcard() is the one
+	 * place that's enforced, regardless of where the group list came from.
+	 */
+	public function testWithoutPublicWildcardDropsStarOnly(): void {
+		$this->assertSame(
+			[ 'sysop', 'editor' ],
+			FeedbackAccess::withoutPublicWildcard( [ 'sysop', '*', 'editor' ], 'x' )
+		);
+		$this->assertSame(
+			[],
+			FeedbackAccess::withoutPublicWildcard( [ '*' ], 'x' )
+		);
+	}
+
+	public function testWithoutPublicWildcardLeavesListsWithoutStarUnchanged(): void {
+		$this->assertSame(
+			[ 'sysop', 'user' ],
+			FeedbackAccess::withoutPublicWildcard( [ 'sysop', 'user' ], 'x' )
+		);
+		$this->assertSame( [], FeedbackAccess::withoutPublicWildcard( [], 'x' ) );
+	}
+
+	/**
+	 * The resulting empty list is not itself "nobody": groupsGrantAccess()
+	 * substitutes DEFAULT_GROUPS for an empty array, so stripping the only
+	 * configured token ('*') falls back to the safe sysop default rather
+	 * than granting no one.
+	 */
+	public function testEmptyAfterWildcardStripFallsBackToDefaultInGroupsGrantAccess(): void {
+		$stripped = FeedbackAccess::withoutPublicWildcard( [ '*' ], 'x' );
+		$named = new FakeIdentityUser( true, false );
+		$this->assertTrue( FeedbackAccess::groupsGrantAccess( $stripped, $named, [ 'sysop' ] ) );
 	}
 }
 

@@ -4,24 +4,33 @@ namespace MediaWiki\Extension\SaintapediaFeedback;
 
 use MediaWiki\MediaWikiServices;
 use MediaWiki\User\UserIdentity;
-use Title;
 use User;
 
 /**
  * Who may view/process the feedback dashboard.
  *
- * Configurable via a MediaWiki namespace page (default:
- * MediaWiki:SaintapediaFeedback-access). One group name per line.
+ * Configured from LocalSettings.php only (F-08, 2026-09-10 review): dashboard,
+ * email, and export access used to also be overridable from MediaWiki-namespace
+ * pages, editable by anyone holding editinterface with no deploy or code review.
+ * That on-wiki override has been removed entirely for these three; only
+ * $wgSaintapediaFeedbackAccessGroups / EmailAccessGroups / ExportAccessGroups
+ * (below) are consulted now. (Some lower-stakes operational settings — notify
+ * list, show-public-counts, enable-talklink — remain wiki-overridable; see
+ * FeedbackWikiConfig.)
  *
  * Special tokens:
- * - sysop — administrators [default; matches saintapediafeedback-view]
- * - user  — any persistent named account (not temp / IP); opt-in option C
- * - *     — everyone including anons (rarely appropriate)
+ * - sysop — administrators [default in public mode; matches saintapediafeedback-view]
+ * - user  — any persistent named account (not temp / IP); default in enterprise mode (option C)
+ * - *     — everyone including anons (rarely appropriate; never honored for
+ *           email access — see getAllowedEmailGroups())
  * - autoconfirmed, editor, … — normal MediaWiki groups
  *
- * Lines starting with # or ; and blank lines are ignored.
- *
- * Default when the page is missing or empty: [ 'sysop' ].
+ * Default for dashboard access (getAllowedGroups()) when
+ * $wgSaintapediaFeedbackAccessGroups is unset or empty is mode-dependent —
+ * see defaultGroupsForMode(): [ 'sysop' ] for public mode, [ 'user' ] for
+ * enterprise mode. Email and export access (getAllowedEmailGroups() /
+ * getAllowedExportGroups()) do NOT follow mode; their unset/empty default
+ * is always [ 'sysop' ], regardless of $wgSaintapediaFeedbackMode.
  * Users who hold saintapediafeedback-view via LocalSettings always pass.
  */
 class FeedbackAccess {
@@ -31,12 +40,6 @@ class FeedbackAccess {
 	public const DEFAULT_EMAIL_GROUPS = [ 'sysop' ];
 
 	public const DEFAULT_EXPORT_GROUPS = [ 'sysop' ];
-
-	public const CACHE_KEY = 'saintapediafeedback-access-groups';
-
-	public const EMAIL_CACHE_KEY = 'saintapediafeedback-email-access-groups';
-
-	public const EXPORT_CACHE_KEY = 'saintapediafeedback-export-access-groups';
 
 	/**
 	 * Named account with a durable identity (not anon, not a MW temp account).
@@ -91,7 +94,9 @@ class FeedbackAccess {
 	 * (e.g. sysop only) even when the dashboard itself is opened up to a
 	 * broader group like "user" or a custom editor group. Callers must still
 	 * gate on userCanManage() first — this only decides email visibility for
-	 * someone who can already open the dashboard.
+	 * someone who can already open the dashboard. getAllowedEmailGroups()
+	 * never honors a "*" token (F-08): contact email can never be made
+	 * visible to anonymous/everyone, regardless of how it's configured.
 	 */
 	public static function userCanViewEmail( UserIdentity $user ): bool {
 		try {
@@ -101,9 +106,6 @@ class FeedbackAccess {
 				[ self::class, 'getAllowedEmailGroups' ]
 			);
 		} catch ( \Throwable $e ) {
-			// Isolated failure on the email-access page (separate cache key
-			// from dashboard access): hide email instead of 500ing. A general
-			// cache/DB outage still throws from userCanManage() first.
 			self::logClosedFailure( 'userCanViewEmail', $e );
 			return false;
 		}
@@ -124,9 +126,6 @@ class FeedbackAccess {
 				[ self::class, 'getAllowedExportGroups' ]
 			);
 		} catch ( \Throwable $e ) {
-			// Isolated failure on the export-access page: hide export instead
-			// of 500ing. Same scope as userCanViewEmail — not a whole-cache
-			// outage (that still dies in userCanManage()).
 			self::logClosedFailure( 'userCanExport', $e );
 			return false;
 		}
@@ -139,8 +138,10 @@ class FeedbackAccess {
 	}
 
 	/**
-	 * Email/export check without the fail-closed wrapper. Throws on a
-	 * wiki-page read failure so the callers can deny instead of 500.
+	 * Email/export check without the fail-closed wrapper. $groupsFn reads
+	 * plain LocalSettings.php config now (no wiki-page IO), so this should
+	 * not throw in practice; the try/catch in the two callers is kept as
+	 * defense-in-depth rather than removed.
 	 *
 	 * @param callable(): string[] $groupsFn
 	 */
@@ -220,117 +221,99 @@ class FeedbackAccess {
 	}
 
 	/**
-	 * Groups currently allowed (from wiki page or PHP defaults).
+	 * Groups currently allowed to open the dashboard (from
+	 * $wgSaintapediaFeedbackAccessGroups; when unset, defaultGroupsForMode()
+	 * picks sysop for public mode or user for enterprise mode).
 	 *
 	 * @return string[]
 	 */
 	public static function getAllowedGroups(): array {
-		return self::getAllowedGroupsFor(
-			'SaintapediaFeedbackAccessPage',
-			'SaintapediaFeedback-access',
-			'SaintapediaFeedbackAccessGroups',
-			self::DEFAULT_GROUPS,
-			self::CACHE_KEY
-		);
+		$config = MediaWikiServices::getInstance()->getMainConfig();
+		$groups = $config->get( 'SaintapediaFeedbackAccessGroups' );
+		if ( is_array( $groups ) && $groups ) {
+			return array_values( $groups );
+		}
+		return self::defaultGroupsForMode( (string)$config->get( 'SaintapediaFeedbackMode' ) );
 	}
 
 	/**
-	 * Groups currently allowed to see the contact-email field (from wiki
-	 * page or PHP defaults). Independent of getAllowedGroups().
+	 * Mode-aware fallback for getAllowedGroups() when
+	 * $wgSaintapediaFeedbackAccessGroups is unset/empty. Enterprise wikis
+	 * are intranets with many more trusted logged-in staff than a public
+	 * wiki's sysop-only default fits, so they default to any named account
+	 * (option C) instead. Pure; unit-testable.
+	 *
+	 * Deliberately does NOT apply to getAllowedEmailGroups()/
+	 * getAllowedExportGroups() — those stay sysop-only regardless of mode,
+	 * matching the existing "separate, more restrictive by default" design
+	 * for email visibility and bulk export (see their own doc comments).
+	 *
+	 * @return string[]
+	 */
+	public static function defaultGroupsForMode( string $mode ): array {
+		return $mode === 'enterprise' ? [ 'user' ] : self::DEFAULT_GROUPS;
+	}
+
+	/**
+	 * Groups currently allowed to see the contact-email field (from
+	 * $wgSaintapediaFeedbackEmailAccessGroups, or DEFAULT_EMAIL_GROUPS when
+	 * unset). Independent of getAllowedGroups(). A "*" token is never
+	 * honored here (F-08): contact email must never be visible to
+	 * anonymous/everyone, so it is dropped before the list reaches
+	 * groupsGrantAccess() — even if it came from LocalSettings.php.
 	 *
 	 * @return string[]
 	 */
 	public static function getAllowedEmailGroups(): array {
-		return self::getAllowedGroupsFor(
-			'SaintapediaFeedbackEmailAccessPage',
-			'SaintapediaFeedback-email-access',
-			'SaintapediaFeedbackEmailAccessGroups',
-			self::DEFAULT_EMAIL_GROUPS,
-			self::EMAIL_CACHE_KEY
+		return self::withoutPublicWildcard(
+			self::configuredGroups( 'SaintapediaFeedbackEmailAccessGroups', self::DEFAULT_EMAIL_GROUPS ),
+			'SaintapediaFeedbackEmailAccessGroups'
 		);
 	}
 
 	/**
-	 * Groups currently allowed to export (from wiki page or PHP defaults).
-	 * Independent of getAllowedGroups().
+	 * Groups currently allowed to export (from
+	 * $wgSaintapediaFeedbackExportAccessGroups, or DEFAULT_EXPORT_GROUPS when
+	 * unset). Independent of getAllowedGroups().
 	 *
 	 * @return string[]
 	 */
 	public static function getAllowedExportGroups(): array {
-		return self::getAllowedGroupsFor(
-			'SaintapediaFeedbackExportAccessPage',
-			'SaintapediaFeedback-export-access',
-			'SaintapediaFeedbackExportAccessGroups',
-			self::DEFAULT_EXPORT_GROUPS,
-			self::EXPORT_CACHE_KEY
-		);
+		return self::configuredGroups( 'SaintapediaFeedbackExportAccessGroups', self::DEFAULT_EXPORT_GROUPS );
 	}
 
 	/**
-	 * @param string $pageConfigKey Config var naming the MediaWiki-namespace page
-	 * @param string $pageDefault Fallback DB key when that config var is unset
-	 * @param string $groupsConfigKey Config var with the PHP-default group list
-	 * @param string[] $groupsDefault Fallback when that config var is unset
-	 * @param string $cacheKeyPrefix
+	 * @param string $configKey
+	 * @param string[] $default
 	 * @return string[]
 	 */
-	private static function getAllowedGroupsFor(
-		string $pageConfigKey,
-		string $pageDefault,
-		string $groupsConfigKey,
-		array $groupsDefault,
-		string $cacheKeyPrefix
-	): array {
-		$services = MediaWikiServices::getInstance();
-		$config = $services->getMainConfig();
-		$cache = $services->getMainWANObjectCache();
-
-		$pageName = $config->get( $pageConfigKey );
-		if ( !is_string( $pageName ) || $pageName === '' ) {
-			$pageName = $pageDefault;
-		}
-
-		$defaults = $config->get( $groupsConfigKey );
-		if ( !is_array( $defaults ) || !$defaults ) {
-			$defaults = $groupsDefault;
-		}
-
-		return $cache->getWithSetCallback(
-			$cache->makeKey( $cacheKeyPrefix, md5( $pageName ) ),
-			$cache::TTL_HOUR,
-			static function () use ( $pageName, $defaults ) {
-				return self::loadGroupsFromPage( $pageName, $defaults );
-			}
-		);
+	private static function configuredGroups( string $configKey, array $default ): array {
+		$groups = MediaWikiServices::getInstance()->getMainConfig()->get( $configKey );
+		return ( is_array( $groups ) && $groups ) ? array_values( $groups ) : $default;
 	}
 
 	/**
-	 * @param string $pageName DB key under NS_MEDIAWIKI (no namespace prefix)
-	 * @param string[] $defaults
+	 * Drops a "*" (everyone including anonymous) token from a group list,
+	 * logging when it does so. Groups that pass through
+	 * groupsGrantAccess() unfiltered otherwise; this is the one place "*"
+	 * is refused outright rather than just discouraged in documentation.
+	 * Pure aside from the log call; unit-testable.
+	 *
+	 * @param string[] $groups
 	 * @return string[]
 	 */
-	public static function loadGroupsFromPage( string $pageName, array $defaults ): array {
-		$title = Title::makeTitleSafe( NS_MEDIAWIKI, $pageName );
-		if ( !$title || !$title->exists() ) {
-			return array_values( $defaults );
+	public static function withoutPublicWildcard( array $groups, string $configKey ): array {
+		if ( !in_array( '*', $groups, true ) ) {
+			return $groups;
 		}
-
-		$services = MediaWikiServices::getInstance();
-		$wikipage = $services->getWikiPageFactory()->newFromTitle( $title );
-		$content = $wikipage->getContent();
-		if ( !$content ) {
-			return array_values( $defaults );
+		if ( function_exists( 'wfLogWarning' ) ) {
+			wfLogWarning(
+				"SaintapediaFeedback: {$configKey} included '*' (everyone, including anonymous "
+					. "readers). Contact-email visibility can never be made public; ignoring '*' "
+					. 'for this setting.'
+			);
 		}
-
-		$text = method_exists( $content, 'getText' )
-			? $content->getText()
-			: $content->getTextForSearchIndex();
-
-		$groups = self::parseGroupList( (string)$text );
-		if ( !$groups ) {
-			return array_values( $defaults );
-		}
-		return $groups;
+		return array_values( array_filter( $groups, static fn ( $g ) => $g !== '*' ) );
 	}
 
 	/**
@@ -381,75 +364,5 @@ class FeedbackAccess {
 			}
 		}
 		return $out;
-	}
-
-	/** Drop WAN cache after the access page is edited. */
-	public static function invalidateCache(): void {
-		self::invalidateCacheFor( 'SaintapediaFeedbackAccessPage', 'SaintapediaFeedback-access', self::CACHE_KEY );
-	}
-
-	/** Drop WAN cache after the email-access page is edited. */
-	public static function invalidateEmailCache(): void {
-		self::invalidateCacheFor(
-			'SaintapediaFeedbackEmailAccessPage',
-			'SaintapediaFeedback-email-access',
-			self::EMAIL_CACHE_KEY
-		);
-	}
-
-	/** Drop WAN cache after the export-access page is edited. */
-	public static function invalidateExportCache(): void {
-		self::invalidateCacheFor(
-			'SaintapediaFeedbackExportAccessPage',
-			'SaintapediaFeedback-export-access',
-			self::EXPORT_CACHE_KEY
-		);
-	}
-
-	private static function invalidateCacheFor( string $pageConfigKey, string $pageDefault, string $cacheKeyPrefix ): void {
-		$services = MediaWikiServices::getInstance();
-		$config = $services->getMainConfig();
-		$pageName = $config->get( $pageConfigKey );
-		if ( !is_string( $pageName ) || $pageName === '' ) {
-			$pageName = $pageDefault;
-		}
-		$cache = $services->getMainWANObjectCache();
-		$cache->delete( $cache->makeKey( $cacheKeyPrefix, md5( $pageName ) ) );
-	}
-
-	/**
-	 * Title of the configuration page (for help links).
-	 */
-	public static function getAccessPageTitle(): ?Title {
-		$services = MediaWikiServices::getInstance();
-		$pageName = $services->getMainConfig()->get( 'SaintapediaFeedbackAccessPage' );
-		if ( !is_string( $pageName ) || $pageName === '' ) {
-			$pageName = 'SaintapediaFeedback-access';
-		}
-		return Title::makeTitleSafe( NS_MEDIAWIKI, $pageName );
-	}
-
-	/**
-	 * Title of the email-access configuration page (for help links).
-	 */
-	public static function getEmailAccessPageTitle(): ?Title {
-		$services = MediaWikiServices::getInstance();
-		$pageName = $services->getMainConfig()->get( 'SaintapediaFeedbackEmailAccessPage' );
-		if ( !is_string( $pageName ) || $pageName === '' ) {
-			$pageName = 'SaintapediaFeedback-email-access';
-		}
-		return Title::makeTitleSafe( NS_MEDIAWIKI, $pageName );
-	}
-
-	/**
-	 * Title of the export-access configuration page (for help links).
-	 */
-	public static function getExportAccessPageTitle(): ?Title {
-		$services = MediaWikiServices::getInstance();
-		$pageName = $services->getMainConfig()->get( 'SaintapediaFeedbackExportAccessPage' );
-		if ( !is_string( $pageName ) || $pageName === '' ) {
-			$pageName = 'SaintapediaFeedback-export-access';
-		}
-		return Title::makeTitleSafe( NS_MEDIAWIKI, $pageName );
 	}
 }

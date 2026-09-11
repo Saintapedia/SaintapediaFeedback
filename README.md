@@ -7,7 +7,10 @@ MediaWiki extension: floating **“Improve this article”** widget for readers,
 | **Readers** | Submit without an account (public mode), with hCaptcha, rate limits, and block checks. Hide the floating button (× or long-press) for this tab; restore from the screen-edge tab or **Tools → Improve this article** |
 | **Editors** | Dashboard + toolbox link (`saintapediafeedback-view`, granted to **sysop** by default). Seeing the contact email and downloading the JSON export each need their own separate right (`saintapediafeedback-viewemail`, `saintapediafeedback-export`), also sysop by default |
 
-Requires **MediaWiki ≥ 1.39**.
+Requires **MediaWiki ≥ 1.39** (minimum code-compatibility floor, tested against; not a
+production recommendation — MediaWiki 1.39 reached end-of-life and no longer receives
+security updates. Deploy against a [currently supported MediaWiki branch](https://www.mediawiki.org/wiki/Version_lifecycle)
+whenever possible).
 
 ---
 
@@ -86,6 +89,12 @@ $wgSaintapediaFeedbackMode = 'enterprise';
 // $wgSaintapediaFeedbackRequireCaptcha = true; // force captcha if desired
 ```
 
+Dashboard access also defaults differently in this mode: any named account
+(option C) can open it, not just sysop — see
+[Who can use the dashboard?](#who-can-use-the-dashboard) below. Set
+`$wgSaintapediaFeedbackAccessGroups = [ 'sysop' ];` explicitly if you want
+sysop-only even in enterprise mode.
+
 ---
 
 ## Editor workflow
@@ -103,33 +112,47 @@ $wgSaintapediaFeedbackMode = 'enterprise';
 
 ## Who can use the dashboard?
 
-Access is **configurable on-wiki** (no deploy required for day-to-day changes).
+Access, contact-email visibility, and export access are configured in
+**`LocalSettings.php` only.** They used to also be overridable from
+`MediaWiki:`-namespace pages editable by anyone holding `editinterface` — that
+override was removed (2026-09-10 review, F-08): those three settings, plus
+the rate limit and CAPTCHA requirement below, are security controls, and
+changing them used to need only a wiki edit, with no deploy and no code
+review, and only page-edit history as an audit trail. Notify-user list,
+show-public-counts, and enable-Talk-link stay wiki-overridable — see
+[On-wiki config for operational settings](#on-wiki-config-for-operational-settings-no-deploy)
+below — because they're operational preferences, not security controls.
 
-### Default (administrators)
+### Default (mode-dependent)
 
-If the config page is missing or empty, only **sysop** (and anyone granted `saintapediafeedback-view`) can open the dashboard. Anons, temp accounts, and ordinary named accounts cannot.
+If `$wgSaintapediaFeedbackAccessGroups` is unset or empty, the default depends
+on `$wgSaintapediaFeedbackMode`:
 
-To restore option C (any named account) put `user` on the access page, or set `$wgSaintapediaFeedbackAccessGroups = [ 'user' ]`.
+- **public mode**: only **sysop** (and anyone granted `saintapediafeedback-view`)
+  can open the dashboard. Anons, temp accounts, and ordinary named accounts
+  cannot.
+- **enterprise mode**: any named account (option C — not temp, not anon) can
+  open the dashboard, on the assumption that an intranet wiki has many more
+  trusted logged-in staff than a public wiki's sysop-only default fits.
 
-### Change who has access
+Set `$wgSaintapediaFeedbackAccessGroups` explicitly to override either mode's
+default:
 
-Edit **`MediaWiki:SaintapediaFeedback-access`**.
+```php
+// Explicit sysop-only, regardless of mode
+$wgSaintapediaFeedbackAccessGroups = [ 'sysop' ];
+// Explicit option C — any named account (not temp), regardless of mode:
+// $wgSaintapediaFeedbackAccessGroups = [ 'user' ];
 
-That page lives in the **MediaWiki** namespace, which core restricts to users with the **`editinterface`** right (by default **sysop** and **interface-admin**). Ordinary editors cannot change who has dashboard access.
-
-One group (or token) per line:
-
+// Always-on via right (still subject to blocks) — sysop has this by default
+$wgGroupPermissions['sysop']['saintapediafeedback-view'] = true;
+$wgGroupPermissions['editor']['saintapediafeedback-view'] = true;
 ```
-# Administrators (default)
-sysop
 
-# Option C — any named account (not temp):
-# user
-
-# Or restrict further, for example:
-# editor
-# autoconfirmed
-```
+`$wgSaintapediaFeedbackEmailAccessGroups` and `ExportAccessGroups` do **not**
+follow mode — they default to sysop regardless of `$wgSaintapediaFeedbackMode`,
+matching the existing "separate, more restrictive by default" design for
+email visibility and bulk export (see below).
 
 | Token / group | Meaning |
 |---------------|---------|
@@ -137,53 +160,33 @@ sysop
 | `user` | Any named account — not anon, not a MW temp account (option **C**, opt-in) |
 | `autoconfirmed` | Autoconfirmed users |
 | `editor` | Your wiki’s editor group (if you have one) |
-| `*` | Everyone including anons (not recommended). A line that is only `*` works; `* *` is the wiki-list form. |
+| `*` | Everyone including anons (not recommended; allowed for dashboard access, but see below — it is never honored for contact-email visibility) |
 
-Blank lines and `#` or `;` comments are ignored. Cache invalidates on **save, delete, or move** of the access page.
-
-### Blocks
-
-**A site/user block revokes dashboard access**, even if the person is a sysop or matches the access page. Blocking someone is enough to stop bulk-process/export abuse; you do not need to also remove them from a group. (Matches the submit API’s block check.)
-
-### LocalSettings overrides
-
-```php
-// PHP default when the MediaWiki page is empty/missing (default is already ['sysop'])
-$wgSaintapediaFeedbackAccessGroups = [ 'sysop' ];
-// Intranet / option C — any named account:
-// $wgSaintapediaFeedbackAccessGroups = [ 'user' ];
-
-// Rename the config page (MediaWiki-namespace DB key, no prefix)
-// $wgSaintapediaFeedbackAccessPage = 'SaintapediaFeedback-access';
-
-// Always-on via right (still subject to blocks) — sysop has this by default
-$wgGroupPermissions['sysop']['saintapediafeedback-view'] = true;
-$wgGroupPermissions['editor']['saintapediafeedback-view'] = true;
-```
-
-Anyone who has the **`saintapediafeedback-view`** right **or** matches a group on the access page can manage feedback — unless they are blocked.
+Anyone who has the **`saintapediafeedback-view`** right **or** matches a
+configured group can manage feedback — unless they are blocked.
 
 | Right | Default | Meaning |
 |-------|---------|---------|
-| `saintapediafeedback-view` | sysop | Dashboard access — view/process feedback. Allowed if not blocked (plus groups on the access page) |
+| `saintapediafeedback-view` | sysop | Dashboard access — view/process feedback. Allowed if not blocked (plus configured groups) |
 | `saintapediafeedback-viewemail` | sysop | See the contact-email field, independent of dashboard access — see below |
 | `saintapediafeedback-export` | sysop | Download the JSON export, independent of dashboard access — see below |
+
+### Blocks
+
+**A site/user block revokes dashboard access**, even if the person is a sysop or matches a configured group. Blocking someone is enough to stop bulk-process/export abuse; you do not need to also remove them from a group. (Matches the submit API’s block check.)
 
 ### Locking down the contact-email field separately
 
 Dashboard access and contact-email visibility are **separate checks**. Widening
-`SaintapediaFeedback-access` (e.g. to `user`, so any named editor can triage
-feedback) does **not** automatically show them the optional contact-email
-field — that's gated by its own right, **`saintapediafeedback-viewemail`**
-(default **sysop**), and its own config page,
-**`MediaWiki:SaintapediaFeedback-email-access`** (same one-group-per-line
-syntax, same cache invalidation on save/delete/move).
+`SaintapediaFeedbackAccessGroups` (e.g. to `['user']`, so any named editor can
+triage feedback) does **not** automatically show them the optional
+contact-email field — that's gated by its own right,
+**`saintapediafeedback-viewemail`** (default **sysop**), and its own group
+list, **`$wgSaintapediaFeedbackEmailAccessGroups`**.
 
 ```php
-// PHP default when the email-access page is empty/missing (default is sysop)
+// PHP default (already ['sysop'])
 $wgSaintapediaFeedbackEmailAccessGroups = [ 'sysop' ];
-// Rename the email-access config page
-// $wgSaintapediaFeedbackEmailAccessPage = 'SaintapediaFeedback-email-access';
 
 // Always-on via right — sysop has this by default
 $wgGroupPermissions['sysop']['saintapediafeedback-viewemail'] = true;
@@ -194,18 +197,26 @@ only a smaller trusted set to see whatever email address a reader typed in.
 A user who fails this check simply sees the row with no contact-email
 line — everything else on the dashboard is unaffected.
 
-**Getting to "nobody" takes two steps, not one.** An empty or missing
-groups list/page isn't "deny everyone" — it falls back to the `sysop`
-default (`FeedbackAccess::DEFAULT_EMAIL_GROUPS`), and `sysop` also holds
-`saintapediafeedback-viewemail` directly via `extension.json`'s
-`GroupPermissions`, independent of the group-list check. So:
+**Contact email can never be made public.** Unlike dashboard/export access,
+`*` is never honored in `SaintapediaFeedbackEmailAccessGroups` — the extension
+strips it before the check runs (and logs a warning if it was present), no
+matter how it got into the config. There is no way to configure "everyone
+including anons can see reader emails."
+
+**Getting to "nobody" (a specific smaller set than sysop, not "everyone")
+still takes two steps, not one.** An empty groups list isn't "deny everyone"
+— it falls back to the `sysop` default (`FeedbackAccess::DEFAULT_EMAIL_GROUPS`),
+and `sysop` also holds `saintapediafeedback-viewemail` directly via
+`extension.json`'s `GroupPermissions`, independent of the group-list check.
+So:
 
 1. Remove the right from sysop in `LocalSettings.php`:
    `$wgGroupPermissions['sysop']['saintapediafeedback-viewemail'] = false;`
 2. And point the group list at something no real user group matches — a
-   made-up token like `no-one` on `MediaWiki:SaintapediaFeedback-email-access`
-   works today (it isn't `*`, isn't `user`, and matches no actual MediaWiki
-   group), or a real but nonexistent local group name.
+   made-up token like `no-one`
+   (`$wgSaintapediaFeedbackEmailAccessGroups = [ 'no-one' ];`) works today (it
+   isn't `*`, isn't `user`, and matches no actual MediaWiki group), or a real
+   but nonexistent local group name.
 
 Skipping either step alone still leaves sysop able to see it.
 
@@ -213,12 +224,11 @@ Skipping either step alone still leaves sysop able to see it.
 
 Same pattern again, for the JSON export. Dashboard access does **not** by
 itself grant the ability to download the full raw export — that needs
-**`saintapediafeedback-export`** (default **sysop**), configurable on-wiki via
-**`MediaWiki:SaintapediaFeedback-export-access`**.
+**`saintapediafeedback-export`** (default **sysop**), configured via
+**`$wgSaintapediaFeedbackExportAccessGroups`**.
 
 ```php
 $wgSaintapediaFeedbackExportAccessGroups = [ 'sysop' ];
-// $wgSaintapediaFeedbackExportAccessPage = 'SaintapediaFeedback-export-access';
 $wgGroupPermissions['sysop']['saintapediafeedback-export'] = true;
 ```
 
@@ -228,8 +238,8 @@ hit directly. Useful when you want a large triage team to process feedback in
 the UI but keep bulk offline downloads (which are easier to exfiltrate or
 mishandle than on-screen rows) to a smaller set.
 
-**Getting export to "nobody" is the same two-step as email.** Creating
-`MediaWiki:SaintapediaFeedback-export-access` with `no-one` is not enough:
+**Getting export to "nobody" is the same two-step as email.** Setting
+`$wgSaintapediaFeedbackExportAccessGroups = [ 'no-one' ]` is not enough:
 sysop still has `saintapediafeedback-export` via `extension.json`. You must
 also revoke that right:
 
@@ -237,37 +247,48 @@ also revoke that right:
 $wgGroupPermissions['sysop']['saintapediafeedback-export'] = false;
 ```
 
-and point the group list at a dummy token (`no-one` on the export-access
-page, or `$wgSaintapediaFeedbackExportAccessGroups = [ 'no-one' ];`). An
-empty list/page falls back to sysop, same as email.
+An empty list falls back to sysop, same as email.
+
+## Anti-abuse controls (rate limit, CAPTCHA)
+
+Also **`LocalSettings.php` only**, for the same reason as access above (F-08):
+
+```php
+$wgSaintapediaFeedbackRateLimit = 5;              // public mode, per hashed IP per day
+$wgSaintapediaFeedbackEnterpriseRateLimit = 50;   // enterprise mode
+$wgSaintapediaFeedbackRequireCaptcha = null;      // null = auto from mode; true/false to force
+```
+
+`0` is a valid rate limit and **rejects every submission**
+(`tryInsertUnderLimit` treats `$limit < 1` as over the limit) — it is not
+"unlimited".
 
 ## On-wiki config for operational settings (no deploy)
 
-A handful of non-secret operational knobs can also be set from a
-`MediaWiki:` page instead of `LocalSettings.php`, the same way the access
-pages work: one page, plain text, cached an hour, invalidated immediately on
-save/delete/move. **When the page is missing or empty, the existing
-`LocalSettings.php` value is used** — nothing changes until you create the
-page.
+A handful of non-secret operational knobs — the ones that are preferences,
+not security controls — can still be set from a `MediaWiki:` page instead of
+`LocalSettings.php`: one page, plain text, cached an hour, invalidated
+immediately on save/delete/move. **When the page is missing or empty, the
+existing `LocalSettings.php` value is used** — nothing changes until you
+create the page.
 
 | Setting | Page (DB key, no prefix) | Format | Overrides |
 |---------|---------------------------|--------|-----------|
-| Rate limit | `SaintapediaFeedback-ratelimit` | non-negative integer (`0` = reject every submit; delete the page to revert to PHP, do not write `0`) | `$wgSaintapediaFeedbackRateLimit` / `EnterpriseRateLimit` (mode-appropriate one) |
 | Notify users | `SaintapediaFeedback-notify-users` | one username per line | `$wgSaintapediaFeedbackNotifyUsers` |
-| Require captcha | `SaintapediaFeedback-require-captcha` | `true` / `false` | `$wgSaintapediaFeedbackRequireCaptcha` (and the mode-based auto default) |
 | Show public counts | `SaintapediaFeedback-show-public-counts` | `true` / `false` | `$wgSaintapediaFeedbackShowPublicCounts` |
 | Enable Talk link | `SaintapediaFeedback-enable-talklink` | `true` / `false` | `$wgSaintapediaFeedbackEnableTalkLink` |
 
 Page names are each renameable via a `*Page` config var (e.g.
-`$wgSaintapediaFeedbackRateLimitPage`), same convention as
-`SaintapediaFeedbackAccessPage`. Line parsing is identical to the access
-pages: `#`/`;` lines and blank lines are ignored, a leading wiki-list `* `
-marker is stripped, and inline `# comment` text after a value is stripped
-too — so `* false`, `* 10 # temporary`, and `Admin # notify lead editor` all
-parse the way you'd expect from writing an access page. For a `true`/`false`
+`$wgSaintapediaFeedbackNotifyUsersPage`). Blank lines and `#`/`;` comments are
+ignored, a leading wiki-list `* ` marker is stripped, and inline `# comment`
+text after a value is stripped too — so `* false`, `* 10 # temporary`, and
+`Admin # notify lead editor` all parse as expected. For a `true`/`false`
 setting, the first non-comment line is matched case-insensitively against
 `true`/`yes`/`on`/`1` and `false`/`no`/`off`/`0`; anything else (including a
-typo) is treated as "no override" and falls back to the PHP value.
+typo) is treated as "no override" and falls back to the PHP value. A
+cache/DB read failure logs `using PHP value` and keeps the PHP value — none
+of these three knobs fail closed (there's no "safe direction" to fail toward
+for a notify list or a display toggle).
 
 **What deliberately did *not* move on-wiki:** the hCaptcha secret key and the
 LLM webhook bearer token. `MediaWiki:` pages are readable by anyone even
@@ -275,33 +296,13 @@ though editing them is restricted to `editinterface` — putting a secret there
 would publish it, not lock it down. Those stay in `LocalSettings.php` / env
 vars only.
 
-**Captcha-required and the rate-limit page are security controls**, not just
-operational preferences (notify users, public counts, and Talk link are).
-Putting them on-wiki means any `editinterface` holder can turn off captcha
-or write a huge integer to `SaintapediaFeedback-ratelimit` and neutralize
-volume abuse control — without a deploy, a code review, or a PR, only
-page-edit history as an audit trail. If that tradeoff doesn't fit your
-review process, leave those two pages blank and set
-`$wgSaintapediaFeedbackRequireCaptcha` / `$wgSaintapediaFeedbackRateLimit`
-in `LocalSettings.php` instead; the on-wiki pages simply won't apply until
-they have content. A cache/DB failure while reading the captcha page fails
-closed to captcha **required**, so a blip cannot silently turn protection
-off; a missing or empty page still uses the PHP/mode default. The PHP
-warning for that case says `failing closed`. The other four knobs (rate
-limit, notify users, public counts, Talk link) log `using PHP value` on
-the same class of failure — they do **not** fail closed. On the
-rate-limit page, `0` is a valid integer and **rejects every submission**
-(`tryInsertUnderLimit` treats `$limit < 1` as over the limit) — it is not
-"unlimited". Delete the page (or leave it blank) to fall back to the PHP
-value.
-
 ## Security model (public)
 
 - Anyone can submit (no login).
 - CSRF + POST-only API; blocked users/IPs denied.
 - hCaptcha when required (fail closed if misconfigured).
 - Per-IP rate limit (hashed IP only; counted on the primary DB).
-- Optional contact email is stored plaintext (so editors can follow up). Dashboard list queries do not select email or IP hash.
+- Optional contact email is stored plaintext (so editors can follow up). Dashboard list queries do not select email or IP hash. Set `$wgSaintapediaFeedbackContactEmailRetentionDays` and schedule `maintenance/ExpireContactEmails.php` to clear it automatically after a retention window (default: retention disabled).
 - Namespace allowlist on API and widget.
 - Status changes: POST + edit token; bulk same.
 - Review UI is never public.

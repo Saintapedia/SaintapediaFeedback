@@ -142,13 +142,21 @@
 			"value": 50,
 			"description": "Max feedback submissions per IP per day in enterprise mode."
 		},
+		"SaintapediaFeedbackIpHashSecret": {
+			"value": "",
+			"description": "Dedicated secret for the rate-limit IP hash. Empty falls back to $wgSecretKey. Set a dedicated value so this hash can be rotated independently of the global application secret; keep it in LocalSettings.php or the environment, never on a wiki page."
+		},
 		"SaintapediaFeedbackEnableEmail": {
 			"value": false,
 			"description": "Show optional contact email field (automatically enabled in enterprise mode)."
 		},
+		"SaintapediaFeedbackContactEmailRetentionDays": {
+			"value": 0,
+			"description": "Days after submission before maintenance/ExpireContactEmails.php clears fb_contact_email (sets it NULL; the rest of the feedback row is kept). 0 = disabled (default; the job refuses to run non-dry-run without --days or this set). Only relevant when SaintapediaFeedbackEnableEmail is/was on."
+		},
 		"SaintapediaFeedbackRequireCaptcha": {
 			"value": null,
-			"description": "Require hCaptcha via ConfirmEdit. null = auto (true for public mode, false for enterprise). true/false overrides per wiki."
+			"description": "Require hCaptcha via ConfirmEdit. null = auto (true for public mode, false for enterprise). true/false overrides. LocalSettings.php only — not wiki-page overridable (security control, F-08)."
 		},
 		"SaintapediaFeedbackNotifyUsers": {
 			"value": [],
@@ -158,47 +166,25 @@
 			"value": false,
 			"description": "Optional single email address to notify on each new submission (requires $wgEnableEmail / $wgSMTP). false disables."
 		},
-		"SaintapediaFeedbackAccessPage": {
-			"value": "SaintapediaFeedback-access",
-			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to manage feedback. Missing/empty page → AccessGroups default."
-		},
 		"SaintapediaFeedbackAccessGroups": {
-			"value": [
-				"sysop"
-			],
-			"description": "Default groups when the access page is missing or empty. Default is sysop (safe for public wikis). Set to ['user'] or put 'user' on the access page for option C (named accounts, not temps)."
-		},
-		"SaintapediaFeedbackEmailAccessPage": {
-			"value": "SaintapediaFeedback-email-access",
-			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to see the optional contact-email field. Separate from the dashboard access page/right so email can be locked to a smaller set than general feedback access. Missing/empty page falls back to EmailAccessGroups."
+			"value": [],
+			"description": "Groups allowed to manage feedback. Empty (default) picks a mode-appropriate default: sysop for public mode, user (any named account, not temps — option C) for enterprise mode, via FeedbackAccess::defaultGroupsForMode(). Set explicitly to override either mode's default. LocalSettings.php only — not wiki-page overridable (F-08)."
 		},
 		"SaintapediaFeedbackEmailAccessGroups": {
 			"value": [
 				"sysop"
 			],
-			"description": "Default groups allowed to see the contact-email field when the email access page is missing or empty. Default is sysop, independent of SaintapediaFeedbackAccessGroups."
-		},
-		"SaintapediaFeedbackExportAccessPage": {
-			"value": "SaintapediaFeedback-export-access",
-			"description": "MediaWiki-namespace page (DB key without prefix) listing groups allowed to download the JSON export. Separate from the dashboard access page/right so bulk export can be locked to a smaller set than general feedback access. Missing/empty page falls back to ExportAccessGroups."
+			"description": "Groups allowed to see the contact-email field. Default is sysop, independent of SaintapediaFeedbackAccessGroups. LocalSettings.php only. A '*' token is never honored here regardless of how it's set — contact email can never be made visible to anonymous/everyone (F-08)."
 		},
 		"SaintapediaFeedbackExportAccessGroups": {
 			"value": [
 				"sysop"
 			],
-			"description": "Default groups allowed to export when the export access page is missing or empty. Default is sysop, independent of SaintapediaFeedbackAccessGroups."
-		},
-		"SaintapediaFeedbackRateLimitPage": {
-			"value": "SaintapediaFeedback-ratelimit",
-			"description": "MediaWiki-namespace page (DB key without prefix) holding a single integer that overrides the mode-appropriate rate limit (SaintapediaFeedbackRateLimit / EnterpriseRateLimit) without a deploy. Missing/empty/non-numeric page falls back to the PHP config."
+			"description": "Groups allowed to export. Default is sysop, independent of SaintapediaFeedbackAccessGroups. LocalSettings.php only — not wiki-page overridable (F-08)."
 		},
 		"SaintapediaFeedbackNotifyUsersPage": {
 			"value": "SaintapediaFeedback-notify-users",
 			"description": "MediaWiki-namespace page (DB key without prefix), one username per line, overriding SaintapediaFeedbackNotifyUsers without a deploy. Missing/empty page falls back to the PHP config."
-		},
-		"SaintapediaFeedbackRequireCaptchaPage": {
-			"value": "SaintapediaFeedback-require-captcha",
-			"description": "MediaWiki-namespace page (DB key without prefix) holding true/false to override SaintapediaFeedbackRequireCaptcha (and the mode-based auto default) without a deploy. Security-sensitive: editable by anyone with editinterface, not gated by code review. Missing/empty/unrecognized page falls back to the PHP config."
 		},
 		"SaintapediaFeedbackShowPublicCountsPage": {
 			"value": "SaintapediaFeedback-show-public-counts",
@@ -220,9 +206,13 @@
 			"value": true,
 			"description": "When true, show an optional checkbox on actioned to append a short Talk-page note linking to public resolutions (never dumps work notes or raw reader comments)."
 		},
+		"SaintapediaFeedbackEnableLlm": {
+			"value": false,
+			"description": "Master switch for automated LLM triage. Default false: ProcessFeedbackLlm.php refuses to post or mark rows processed outside --dry-run, even if --webhook is passed on the command line. Set true only after reviewing docs/LLM.md's activation checklist."
+		},
 		"SaintapediaFeedbackLlmWebhook": {
 			"value": "",
-			"description": "HTTPS URL that receives POST JSON {count,items} of pending feedback. Empty disables the maintenance script unless --webhook is passed."
+			"description": "HTTPS URL that receives POST JSON {count,items} of pending feedback. Ignored for non-dry-run posting unless SaintapediaFeedbackEnableLlm is also true."
 		},
 		"SaintapediaFeedbackLlmWebhookToken": {
 			"value": "",

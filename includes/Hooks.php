@@ -228,8 +228,10 @@ class Hooks {
 	}
 
 	/**
-	 * Moving/renaming any access-config or on-wiki operational-setting page
-	 * must not leave a stale cache entry.
+	 * Moving/renaming an on-wiki operational-setting page must not leave a
+	 * stale cache entry. (Access/email/export pages no longer exist here —
+	 * F-08, 2026-09-10 review — so there is nothing access-related left to
+	 * invalidate on move.)
 	 */
 	public static function onPageMoveComplete(
 		$old,
@@ -240,11 +242,6 @@ class Hooks {
 		$reason,
 		$revision
 	): void {
-		$targets = [
-			[ FeedbackAccess::getAccessPageTitle(), [ FeedbackAccess::class, 'invalidateCache' ] ],
-			[ FeedbackAccess::getEmailAccessPageTitle(), [ FeedbackAccess::class, 'invalidateEmailCache' ] ],
-			[ FeedbackAccess::getExportAccessPageTitle(), [ FeedbackAccess::class, 'invalidateExportCache' ] ],
-		];
 		foreach ( [ $old, $new ] as $lt ) {
 			try {
 				$t = Title::newFromLinkTarget( $lt );
@@ -253,11 +250,6 @@ class Hooks {
 			}
 			if ( !$t ) {
 				continue;
-			}
-			foreach ( $targets as [ $page, $invalidate ] ) {
-				if ( $page && ( $t->equals( $page ) || $t->getPrefixedText() === $page->getPrefixedText() ) ) {
-					$invalidate();
-				}
 			}
 			FeedbackWikiConfig::maybeInvalidate( $t );
 		}
@@ -269,18 +261,6 @@ class Hooks {
 	private static function maybeInvalidateConfigCaches( $title ): void {
 		if ( !$title ) {
 			return;
-		}
-		$access = FeedbackAccess::getAccessPageTitle();
-		if ( $access && $title->equals( $access ) ) {
-			FeedbackAccess::invalidateCache();
-		}
-		$emailAccess = FeedbackAccess::getEmailAccessPageTitle();
-		if ( $emailAccess && $title->equals( $emailAccess ) ) {
-			FeedbackAccess::invalidateEmailCache();
-		}
-		$exportAccess = FeedbackAccess::getExportAccessPageTitle();
-		if ( $exportAccess && $title->equals( $exportAccess ) ) {
-			FeedbackAccess::invalidateExportCache();
 		}
 		FeedbackWikiConfig::maybeInvalidate( $title );
 	}

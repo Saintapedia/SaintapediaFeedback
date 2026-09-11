@@ -7,7 +7,7 @@ use MediaWiki\Extension\SaintapediaFeedback\CaptchaGate;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
-use MediaWiki\Extension\SaintapediaFeedback\FeedbackWikiConfig;
+use MediaWiki\Extension\SaintapediaFeedback\IpHasher;
 use MediaWiki\MediaWikiServices;
 use TitleFactory;
 use Wikimedia\ParamValidator\ParamValidator;
@@ -71,20 +71,31 @@ class ApiSubmitFeedback extends ApiBase {
 			$this->dieWithError( 'saintapediafeedback-error-captcha', 'spf-captcha' );
 		}
 
-		// Rate limiting — hash the IP, never log the raw value
-		$ip     = $request->getIP();
-		$ipHash = hash(
-			'sha256',
-			$ip . MediaWikiServices::getInstance()->getMainConfig()->get( 'SecretKey' )
-		);
-		$phpLimit = $mode === 'enterprise'
+		// Rate limiting — hash the IP, never log the raw value. Uses a
+		// dedicated secret (falling back to $wgSecretKey if unset) plus a
+		// UTC-date bucket so the hash is not a stable, indefinitely
+		// linkable identifier for one address (F-07).
+		$ip = $request->getIP();
+		$ipHashSecret = (string)$config->get( 'SaintapediaFeedbackIpHashSecret' );
+		if ( $ipHashSecret === '' ) {
+			$ipHashSecret = (string)MediaWikiServices::getInstance()
+				->getMainConfig()->get( 'SecretKey' );
+		}
+		$ipHash = IpHasher::hash( $ip, $ipHashSecret );
+		// Also hash under yesterday's UTC bucket: the day-bucketed hash
+		// means a plain "count rows with today's hash" would reset the cap
+		// at every UTC midnight instead of rolling, letting a client submit
+		// up to the limit just before midnight and the limit again just
+		// after. Checking both hashes over the same 24h window closes that
+		// without giving up the day-bucketing itself (still F-07's win:
+		// no indefinitely linkable identifier).
+		$ipHashYesterday = IpHasher::hash( $ip, $ipHashSecret, gmdate( 'Y-m-d', time() - 86400 ) );
+		// LocalSettings.php only (F-08, 2026-09-10 review): a MediaWiki:-page
+		// override existed here before, letting anyone holding editinterface
+		// weaken the rate limit with a wiki edit and no deploy/code review.
+		$limit = (int)( $mode === 'enterprise'
 			? $config->get( 'SaintapediaFeedbackEnterpriseRateLimit' )
-			: $config->get( 'SaintapediaFeedbackRateLimit' );
-		$limit = FeedbackWikiConfig::effectiveInt(
-			'SaintapediaFeedbackRateLimitPage',
-			'SaintapediaFeedback-ratelimit',
-			(int)$phpLimit
-		);
+			: $config->get( 'SaintapediaFeedbackRateLimit' ) );
 
 		// Sanitize free text
 		$comment = $params['comment'] ?? null;
@@ -115,6 +126,7 @@ class ApiSubmitFeedback extends ApiBase {
 			'title'        => $title->getDBkey(),
 			'userId'       => FeedbackAccess::isPersistentAccount( $user ) ? $user->getId() : null,
 			'ipHash'       => $ipHash,
+			'rateLimitHashes' => [ $ipHash, $ipHashYesterday ],
 			'categories'   => $categories,
 			'comment'      => $comment,
 			'contactEmail' => $contactEmail,

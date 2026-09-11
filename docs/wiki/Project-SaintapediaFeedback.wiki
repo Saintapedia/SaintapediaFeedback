@@ -1,7 +1,10 @@
 <!--
   Paste this onto the wiki as [[Project:SaintapediaFeedback]].
   Source of truth in the extension repo: docs/wiki/Project-SaintapediaFeedback.wiki
-  Requires SaintapediaFeedback 1.7.3+.
+  Requires SaintapediaFeedback 1.7.3+. The "who can see what" and on-wiki config
+  sections below reflect the 2026-09-10 review (F-08): access, email-access,
+  export-access, rate limit, and CAPTCHA-required moved to LocalSettings.php
+  only. See CHANGELOG.md's Unreleased section for the version that shipped this.
 -->
 = SaintapediaFeedback =
 
@@ -25,49 +28,40 @@ Dashboard: [[Special:SaintapediaFeedback]] (or Toolbox → '''Page feedback''' o
 ! What it does
 |-
 | <code>saintapediafeedback-view</code>
-| sysop
-| Open the dashboard, process rows, bulk-action. Also granted by [[MediaWiki:SaintapediaFeedback-access]].
+| sysop (public mode) / any named account (enterprise mode)
+| Open the dashboard, process rows, bulk-action. Also granted by <code>$wgSaintapediaFeedbackAccessGroups</code> (LocalSettings.php) — set it explicitly to override either mode's default.
 |-
 | <code>saintapediafeedback-viewemail</code>
 | sysop
-| See the optional contact-email field. Independent of dashboard access. [[MediaWiki:SaintapediaFeedback-email-access]]
+| See the optional contact-email field. Independent of dashboard access. <code>$wgSaintapediaFeedbackEmailAccessGroups</code> (LocalSettings.php) — '''can never be set to public/everyone''', regardless of configuration.
 |-
 | <code>saintapediafeedback-export</code>
 | sysop
-| Download JSON export. Independent of dashboard access. [[MediaWiki:SaintapediaFeedback-export-access]]
+| Download JSON export. Independent of dashboard access. <code>$wgSaintapediaFeedbackExportAccessGroups</code> (LocalSettings.php)
 |}
 
 A block revokes dashboard access immediately, even for sysop.
 
-'''Locking email or export to nobody''' takes two steps: revoke the sysop right in LocalSettings '''and''' put a dummy token such as <code>no-one</code> on the matching access page. An empty page is not "nobody" — it falls back to sysop.
+'''Locking email or export to nobody''' takes two steps: revoke the sysop right in LocalSettings '''and''' set the matching <code>*AccessGroups</code> array to a dummy token such as <code>['no-one']</code>. An empty/unset array is not "nobody" for email/export — it always falls back to sysop, regardless of mode. (Dashboard access's empty/unset fallback is mode-dependent — see the table above.)
 
-== On-wiki config pages ==
+== Security settings (LocalSettings.php only) ==
 
-All of these live in the MediaWiki namespace (<code>editinterface</code> only). One value per line; <code>#</code> comments, blank lines, and a leading wiki-list <code>*</code> are ignored. Save/delete/move invalidates the cache immediately (no hour wait).
+Access, email-access, export-access, the rate limit, and CAPTCHA-required are '''not''' configurable from a wiki page (2026-09-10 review, F-08): editing a <code>MediaWiki:</code> page needs only <code>editinterface</code>, with no deploy or code review, which is too low a bar for anti-abuse and access controls. Set these directly:
 
-'''If a page is missing or empty, LocalSettings / PHP defaults apply.''' Leave a page blank unless you intend to override.
+<pre>
+$wgSaintapediaFeedbackAccessGroups = [ 'sysop' ];        // unset = mode default (sysop public, user enterprise)
+$wgSaintapediaFeedbackEmailAccessGroups = [ 'sysop' ];    // '*' is always ignored here
+$wgSaintapediaFeedbackExportAccessGroups = [ 'sysop' ];
+$wgSaintapediaFeedbackRateLimit = 5;                      // public mode, per hashed IP per day
+$wgSaintapediaFeedbackEnterpriseRateLimit = 50;           // enterprise mode
+$wgSaintapediaFeedbackRequireCaptcha = null;              // null = auto from mode; true/false to force
+</pre>
 
-=== Access (who) ===
+<code>0</code> as a rate limit '''rejects every submit''' — it is not "unlimited".
 
-{| class="wikitable"
-! Page
-! Format
-! Default when empty
-|-
-| [[MediaWiki:SaintapediaFeedback-access]]
-| one group/token per line: <code>sysop</code>, <code>user</code> (named accounts, not temps), <code>*</code> (everyone — do not use on a public wiki)
-| sysop
-|-
-| [[MediaWiki:SaintapediaFeedback-email-access]]
-| same
-| sysop
-|-
-| [[MediaWiki:SaintapediaFeedback-export-access]]
-| same
-| sysop
-|}
+== On-wiki config pages (operational knobs only) ==
 
-=== Operational knobs ===
+These three remain overridable from a <code>MediaWiki:</code> page (<code>editinterface</code> only) because they are operational preferences, not security controls. One value per line; <code>#</code> comments, blank lines, and a leading wiki-list <code>*</code> are ignored. Save/delete/move invalidates the cache immediately (no hour wait). '''If a page is missing or empty, LocalSettings / PHP defaults apply.'''
 
 {| class="wikitable"
 ! Page
@@ -75,20 +69,10 @@ All of these live in the MediaWiki namespace (<code>editinterface</code> only). 
 ! Default when empty
 ! On a cache/DB read failure
 |-
-| [[MediaWiki:SaintapediaFeedback-ratelimit]]
-| non-negative integer. '''<code>0</code> rejects every submit''' (not unlimited). Delete the page to revert to PHP.
-| public: 5 / IP / day
-| PHP value. Log: <code>using PHP value</code>
-|-
 | [[MediaWiki:SaintapediaFeedback-notify-users]]
 | one username per line
 | LocalSettings list
 | PHP value. Log: <code>using PHP value</code>
-|-
-| [[MediaWiki:SaintapediaFeedback-require-captcha]]
-| <code>true</code> / <code>false</code> (also yes/on/1, no/off/0)
-| public mode: required
-| '''Captcha stays required.''' Log: <code>failing closed</code>
 |-
 | [[MediaWiki:SaintapediaFeedback-show-public-counts]]
 | <code>true</code> / <code>false</code>
@@ -101,30 +85,15 @@ All of these live in the MediaWiki namespace (<code>editinterface</code> only). 
 | PHP value. Log: <code>using PHP value</code>
 |}
 
-Captcha-required and the rate-limit page are '''security controls'''. Anyone with <code>editinterface</code> can change them without a deploy. On a public wiki keep those two pages '''blank''' and set the values in LocalSettings.
-
 Do '''not''' put the hCaptcha secret or the LLM webhook token on a MediaWiki page. Those pages are world-readable.
-
-== Recommended starting contents (dev) ==
-
-Leave every page above uncreated on a first deploy. PHP defaults are the public-safe set.
-
-If you later want a commented rate-limit override (only after accepting the security tradeoff):
-
-<pre>
-# Submissions per hashed IP per day. 0 = reject every submit.
-# Delete this page to revert to LocalSettings.
-5
-</pre>
 
 == PHP warnings to grep ==
 
-During an overlay read failure, PHP logs one of:
+During an overlay read failure on one of the three pages above, PHP logs:
 
-* <code>SaintapediaFeedback: wiki-config read failed for SaintapediaFeedbackRequireCaptchaPage; failing closed.</code>
-* <code>SaintapediaFeedback: wiki-config read failed for SaintapediaFeedbackRateLimitPage; using PHP value.</code> (and the same suffix for notify-users, show-public-counts, enable-talklink)
+* <code>SaintapediaFeedback: wiki-config read failed for SaintapediaFeedbackNotifyUsersPage; using PHP value.</code> (and the same suffix for show-public-counts, enable-talklink)
 
-Email/export access-page failures log <code>userCanViewEmail overlay read failed; denying</code> / <code>userCanExport overlay read failed; denying</code>. A general cache outage still 500s the dashboard from <code>userCanManage()</code> — that path is not fail-closed.
+Access/email/export no longer read a wiki page, so there's nothing to log a read failure for; a general cache outage still 500s the dashboard from <code>userCanManage()</code>.
 
 == See also ==
 

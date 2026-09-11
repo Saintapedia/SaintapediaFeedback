@@ -45,7 +45,7 @@ class FeedbackNotifier {
 			$config = MediaWikiServices::getInstance()->getMainConfig();
 			$recipients = self::collectRecipientIds( $config, $title, $agent );
 			if ( $recipients ) {
-				self::createEchoEvent( $feedbackId, $title, $categories, $comment, $agent, $recipients );
+				self::createEchoEvent( $feedbackId, $title, $categories, $agent, $recipients );
 			}
 			self::notifyEmail( $config, $feedbackId, $title, $categories, $comment );
 		} catch ( \Throwable $e ) {
@@ -141,13 +141,18 @@ class FeedbackNotifier {
 	}
 
 	/**
+	 * Deliberately does not persist the raw reader comment: Echo's event/
+	 * notification store is not covered by the feedback table's own
+	 * retention or deletion, and a previously delivered notification can
+	 * remain visible after a recipient loses dashboard access. Recipients
+	 * must open the authorized dashboard to read the comment.
+	 *
 	 * @param int[] $recipients
 	 */
 	private static function createEchoEvent(
 		int $feedbackId,
 		Title $title,
 		array $categories,
-		?string $comment,
 		User $agent,
 		array $recipients
 	): void {
@@ -168,7 +173,6 @@ class FeedbackNotifier {
 			'extra' => [
 				'feedback-id' => $feedbackId,
 				'categories'  => $categories,
-				'comment'     => $comment !== null ? mb_substr( $comment, 0, 200 ) : null,
 				'notify-user-ids' => $recipients,
 			],
 		] );

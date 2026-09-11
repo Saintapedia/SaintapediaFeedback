@@ -6,7 +6,7 @@ Product direction for SaintapediaFeedback: help **enterprise editors** improve p
 
 | Topic | Decision |
 |-------|----------|
-| Who can manage | Configurable via `MediaWiki:SaintapediaFeedback-access`; default **sysop**. Option C (`user` = named accounts, not temp) is opt-in |
+| Who can manage | Configurable via `$wgSaintapediaFeedbackAccessGroups` (LocalSettings.php only, F-08). Default is mode-dependent: **sysop** in public mode, **any named account** (option C) in enterprise mode — set the var explicitly to override either |
 | Audit trail | Yes — last actor + timestamp; `spf_feedback_log` |
 | Toolbox count | Yes — “Page feedback (N new)” for managers |
 | **Public count chip** | **Default off** — use public *resolutions* instead of a noisy badge |

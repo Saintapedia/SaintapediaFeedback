@@ -25,19 +25,19 @@ class FeedbackPresentationModel extends EchoEventPresentationModel {
 		return $msg;
 	}
 
+	/**
+	 * Never renders the raw reader comment (F-04): Echo's event extra data
+	 * deliberately does not carry it, so a recipient must open the
+	 * authorized dashboard to read what was actually submitted.
+	 */
 	public function getBodyMessage() {
 		$extra = $this->event->getExtra();
-		$comment = $extra['comment'] ?? null;
-		if ( $comment ) {
-			return $this->msg( 'notification-body-saintapediafeedback-new' )
-				->params( $comment );
-		}
 		$cats = $extra['categories'] ?? [];
 		if ( $cats ) {
 			return $this->msg( 'notification-body-saintapediafeedback-new-cats' )
 				->params( implode( ', ', $cats ) );
 		}
-		return false;
+		return $this->msg( 'notification-body-saintapediafeedback-new-generic' );
 	}
 
 	public function getPrimaryLink() {

@@ -55,12 +55,43 @@ class FeedbackLlmBatchTest extends TestCase {
 		$this->assertSame( [], $source->marked );
 	}
 
+	/**
+	 * Dry-run must still work to preview the batch even while the policy
+	 * gate ($enabled) is off — it never posts or marks rows, so there is
+	 * nothing for the gate to protect against.
+	 */
+	public function testDryRunWorksEvenWhenDisabled(): void {
+		$source = new FakeLlmSource( [ $this->sampleRow( 1 ) ] );
+		$poster = new FakeLlmPoster( 200 );
+		$runner = new FeedbackLlmBatchRunner( $source, $poster );
+		$result = $runner->run( 'https://hooks.example/llm', 50, true, '', false );
+		$this->assertSame( 1, $result['count'] );
+		$this->assertNull( $result['error'] );
+		$this->assertSame( 0, $poster->calls );
+	}
+
+	/**
+	 * F-03: the $enabled policy gate must block non-dry-run processing even
+	 * when a webhook is configured — a --webhook override must not be able
+	 * to bypass $wgSaintapediaFeedbackEnableLlm = false.
+	 */
+	public function testDisabledRefusesToPostEvenWithWebhookConfigured(): void {
+		$source = new FakeLlmSource( [ $this->sampleRow( 1 ) ] );
+		$poster = new FakeLlmPoster( 200 );
+		$runner = new FeedbackLlmBatchRunner( $source, $poster );
+		$result = $runner->run( 'https://hooks.example/llm', 50, false, '', false );
+		$this->assertSame( 'llm-disabled', $result['error'] );
+		$this->assertFalse( $result['marked'] );
+		$this->assertSame( 0, $poster->calls );
+		$this->assertSame( [], $source->marked );
+	}
+
 	public function testEmptyWebhookWithoutDryRunFails(): void {
 		$source = new FakeLlmSource( [ $this->sampleRow( 1 ) ] );
 		$poster = new FakeLlmPoster( 200 );
 		$runner = new FeedbackLlmBatchRunner( $source, $poster );
-		$result = $runner->run( '', 50, false );
-		$this->assertNotNull( $result['error'] );
+		$result = $runner->run( '', 50, false, '', true );
+		$this->assertSame( 'webhook-unconfigured', $result['error'] );
 		$this->assertFalse( $result['marked'] );
 		$this->assertSame( 0, $poster->calls );
 		$this->assertSame( [], $source->marked );
@@ -70,7 +101,7 @@ class FeedbackLlmBatchTest extends TestCase {
 		$source = new FakeLlmSource( [ $this->sampleRow( 3 ), $this->sampleRow( 4 ) ] );
 		$poster = new FakeLlmPoster( 204 );
 		$runner = new FeedbackLlmBatchRunner( $source, $poster );
-		$result = $runner->run( 'https://hooks.example/llm', 50, false );
+		$result = $runner->run( 'https://hooks.example/llm', 50, false, '', true );
 		$this->assertSame( 2, $result['count'] );
 		$this->assertSame( [ 3, 4 ], $result['ids'] );
 		$this->assertTrue( $result['marked'] );
@@ -85,7 +116,7 @@ class FeedbackLlmBatchTest extends TestCase {
 		$source = new FakeLlmSource( [ $this->sampleRow( 9 ) ] );
 		$poster = new FakeLlmPoster( 503 );
 		$runner = new FeedbackLlmBatchRunner( $source, $poster );
-		$result = $runner->run( 'https://hooks.example/llm', 50, false );
+		$result = $runner->run( 'https://hooks.example/llm', 50, false, '', true );
 		$this->assertFalse( $result['marked'] );
 		$this->assertSame( 503, $result['status'] );
 		$this->assertSame( [], $source->marked );
@@ -95,7 +126,7 @@ class FeedbackLlmBatchTest extends TestCase {
 		$source = new FakeLlmSource( [] );
 		$poster = new FakeLlmPoster( 200 );
 		$runner = new FeedbackLlmBatchRunner( $source, $poster );
-		$result = $runner->run( 'https://hooks.example/llm', 50, false );
+		$result = $runner->run( 'https://hooks.example/llm', 50, false, '', true );
 		$this->assertSame( 0, $result['count'] );
 		$this->assertFalse( $result['marked'] );
 		$this->assertSame( 0, $poster->calls );

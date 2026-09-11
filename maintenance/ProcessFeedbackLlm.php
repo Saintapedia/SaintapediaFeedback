@@ -43,13 +43,22 @@ class ProcessFeedbackLlm extends Maintenance {
 			(int)$config->get( 'SaintapediaFeedbackLlmBatchSize' )
 		);
 		$token = (string)$config->get( 'SaintapediaFeedbackLlmWebhookToken' );
+		$enabled = (bool)$config->get( 'SaintapediaFeedbackEnableLlm' );
 		$dryRun = $this->hasOption( 'dry-run' );
 
 		/** @var \MediaWiki\Extension\SaintapediaFeedback\FeedbackStore $store */
 		$store = $services->getService( 'SaintapediaFeedback.FeedbackStore' );
 		$poster = new MwHttpFeedbackLlmPoster( $services->getHttpRequestFactory() );
 		$runner = new FeedbackLlmBatchRunner( $store, $poster );
-		$result = $runner->run( $webhook, $limit, $dryRun, $token );
+		$result = $runner->run( $webhook, $limit, $dryRun, $token, $enabled );
+
+		if ( $result['error'] === 'llm-disabled' ) {
+			$this->fatalError(
+				'$wgSaintapediaFeedbackEnableLlm is false. Automated LLM processing is '
+					. 'disabled; --webhook cannot override that. Use --dry-run to preview '
+					. 'the batch, or set $wgSaintapediaFeedbackEnableLlm = true to activate.'
+			);
+		}
 
 		if ( $result['error'] === 'webhook-unconfigured' ) {
 			$this->fatalError(

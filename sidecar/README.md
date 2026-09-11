@@ -30,10 +30,16 @@ php maintenance/run.php extensions/SaintapediaFeedback/maintenance/ProcessFeedba
 
 If MediaWiki runs in Docker (Canasta), `127.0.0.1` inside the web container is not the host. Use a host IP or attach the sidecar to the same compose network and set the webhook to `http://sidecar:8787/hooks/feedback`.
 
+If you bind `SIDECAR_HOST` to anything other than a loopback address (a compose network
+hostname, a real interface IP, etc.), `SAINTAPEDIA_LLM_WEBHOOK_TOKEN` becomes mandatory —
+the server refuses to start otherwise. `Content-Length` is validated (missing/invalid → 411/400,
+over 2,000,000 bytes → 400) and requests time out after 30s so a slow or missing body can't
+occupy a worker thread indefinitely.
+
 ## Tests
 
 ```bash
-cd sidecar && python3 -m unittest test_triage.py
+cd sidecar && python3 -m unittest test_triage.py test_server.py
 ```
 
 Stdlib only — no pip packages.

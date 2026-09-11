@@ -94,11 +94,29 @@ class FeedbackStoreTest extends MediaWikiIntegrationTestCase {
 		);
 	}
 
-	public function testCountRecentByIpHashIsPerAddress(): void {
+	public function testCountRecentByIpHashesIsPerAddress(): void {
 		$this->store->insert( $this->row( [ 'ipHash' => str_repeat( 'c', 64 ) ] ) );
 		$this->store->insert( $this->row( [ 'ipHash' => str_repeat( 'c', 64 ) ] ) );
-		$this->assertSame( 2, $this->store->countRecentByIpHash( str_repeat( 'c', 64 ) ) );
-		$this->assertSame( 0, $this->store->countRecentByIpHash( str_repeat( 'd', 64 ) ) );
+		$this->assertSame( 2, $this->store->countRecentByIpHashes( [ str_repeat( 'c', 64 ) ] ) );
+		$this->assertSame( 0, $this->store->countRecentByIpHashes( [ str_repeat( 'd', 64 ) ] ) );
+	}
+
+	/**
+	 * F-07 follow-up: the rolling 24h window must still work when a
+	 * caller passes both today's and the prior UTC day's hash for the
+	 * same address — rows under either hash count toward the same cap.
+	 */
+	public function testCountRecentByIpHashesCountsAcrossMultipleHashes(): void {
+		$this->store->insert( $this->row( [ 'ipHash' => str_repeat( 'e', 64 ) ] ) );
+		$this->store->insert( $this->row( [ 'ipHash' => str_repeat( 'f', 64 ) ] ) );
+		$this->assertSame(
+			2,
+			$this->store->countRecentByIpHashes( [ str_repeat( 'e', 64 ), str_repeat( 'f', 64 ) ] )
+		);
+	}
+
+	public function testCountRecentByIpHashesWithNoHashesIsZero(): void {
+		$this->assertSame( 0, $this->store->countRecentByIpHashes( [] ) );
 	}
 
 	/* ------------------------------------------------------------ privacy */
@@ -371,5 +389,77 @@ class FeedbackStoreTest extends MediaWikiIntegrationTestCase {
 
 		$this->store->markLlmProcessed( $ids );
 		$this->assertSame( [], $this->store->getPendingLlmBatch( 10 ) );
+	}
+
+	/* -------------------------------------------------- contact-email retention (F-09) */
+
+	/**
+	 * Backdates a row's fb_timestamp directly (insert() always stamps
+	 * "now"; there is no public way to insert an already-old row, so the
+	 * test manipulates the DB directly to simulate one).
+	 */
+	private function backdate( int $id, int $daysAgo ): void {
+		$db = MediaWikiServices::getInstance()->getDBLoadBalancer()->getConnection( DB_PRIMARY );
+		$db->update(
+			'spf_feedback',
+			[ 'fb_timestamp' => $db->timestamp( time() - ( $daysAgo * 86400 ) ) ],
+			[ 'fb_id' => $id ],
+			__METHOD__
+		);
+	}
+
+	public function testExpireContactEmailsClearsOnlyOldRows(): void {
+		$old = $this->store->insert( $this->row( [ 'contactEmail' => 'old@example.org' ] ) );
+		$recent = $this->store->insert( $this->row( [ 'contactEmail' => 'recent@example.org' ] ) );
+		$this->backdate( $old, 100 );
+		$this->backdate( $recent, 10 );
+
+		$this->assertSame( 1, $this->store->countExpirableContactEmails( 90 ) );
+		$this->assertSame( 1, $this->store->expireContactEmails( 90 ) );
+
+		// getContactEmailsById() omits rows with no email entirely (see
+		// testGetContactEmailsIgnoresEmptyAndUnknownIds above).
+		$this->assertSame( [], $this->store->getContactEmailsById( [ $old ] ) );
+		$this->assertSame(
+			[ $recent => 'recent@example.org' ],
+			$this->store->getContactEmailsById( [ $recent ] )
+		);
+
+		// Clearing the email must not touch the rest of the row.
+		$row = $this->store->getById( $old );
+		$this->assertSame( 'new', (string)$row->fb_status );
+	}
+
+	public function testExpireContactEmailsIgnoresRowsWithoutEmail(): void {
+		$id = $this->store->insert( $this->row( [ 'contactEmail' => null ] ) );
+		$this->backdate( $id, 100 );
+		$this->assertSame( 0, $this->store->countExpirableContactEmails( 90 ) );
+		$this->assertSame( 0, $this->store->expireContactEmails( 90 ) );
+	}
+
+	public function testExpireContactEmailsRespectsLimitAndIsRepeatable(): void {
+		$ids = [];
+		for ( $i = 0; $i < 3; $i++ ) {
+			$id = $this->store->insert( $this->row( [ 'contactEmail' => "r{$i}@example.org" ] ) );
+			$this->backdate( $id, 100 );
+			$ids[] = $id;
+		}
+
+		$this->assertSame( 3, $this->store->countExpirableContactEmails( 90 ) );
+		$this->assertSame( 2, $this->store->expireContactEmails( 90, 2 ), 'First batch capped at limit' );
+		$this->assertSame( 1, $this->store->countExpirableContactEmails( 90 ), 'One row still has email' );
+		$this->assertSame( 1, $this->store->expireContactEmails( 90, 2 ), 'Second call clears the remainder' );
+		$this->assertSame( 0, $this->store->countExpirableContactEmails( 90 ) );
+	}
+
+	public function testExpireContactEmailsWithZeroOrNegativeDaysIsNoop(): void {
+		$id = $this->store->insert( $this->row( [ 'contactEmail' => 'a@example.org' ] ) );
+		$this->backdate( $id, 1000 );
+		$this->assertSame( 0, $this->store->countExpirableContactEmails( 0 ) );
+		$this->assertSame( 0, $this->store->expireContactEmails( 0 ) );
+		$this->assertSame(
+			[ $id => 'a@example.org' ],
+			$this->store->getContactEmailsById( [ $id ] )
+		);
 	}
 }

@@ -1,0 +1,245 @@
+<!--
+  Paste this on mediawiki.org as [[Extension:SaintapediaFeedback]].
+  Source of truth in the extension repo: docs/wiki/Extension-SaintapediaFeedback.wiki
+  Reflects SaintapediaFeedback main as of the 2026-09-10 review remediation
+  (PR #25) — see CHANGELOG.md's Unreleased section. Style follows
+  Extension:SaintapediaDrilldown.
+
+  Not the same page as docs/wiki/Project-SaintapediaFeedback.wiki — that one is
+  the operator cheat-sheet pasted on your own wiki as Project:SaintapediaFeedback.
+-->
+{{Extension
+| status          = stable
+| hook1           = BeforePageDisplay
+| hook2           = SidebarBeforeOutput
+| hook3           = LoadExtensionSchemaUpdates
+| hook4           = PageSaveComplete
+| hook5           = PageDeleteComplete
+| hook6           = PageMoveComplete
+| hook7           = BeforeCreateEchoEvent
+| description     = Reader-facing "Improve this article" feedback widget with an editor triage dashboard
+| author          = [[User:PhotographerTom|Tom O'Neill]], Saintapedia contributors
+| maintainer      = [[User:PhotographerTom|Tom O'Neill]]
+| version         = main (unreleased)
+| update          = 2026-09-10
+| mediawiki       = 1.39+
+| php             = 7.4+
+| needs-updatephp = Yes
+| license         = GPL-2.0-or-later
+| download        = {{GithubDownload|Saintapedia|SaintapediaFeedback}}
+| readme          = [https://github.com/Saintapedia/SaintapediaFeedback/blob/main/README.md README]
+| changelog       = [https://github.com/Saintapedia/SaintapediaFeedback/blob/main/CHANGELOG.md Changelog]
+| example         = [https://saintapedia.org/ Saintapedia] (widget on articles; the dashboard itself is restricted)
+| rights          = saintapediafeedback-view, saintapediafeedback-viewemail, saintapediafeedback-export
+| parameters      = <nowiki/>
+* $wgSaintapediaFeedbackMode
+* $wgSaintapediaFeedbackNamespaces
+* $wgSaintapediaFeedbackRateLimit
+* $wgSaintapediaFeedbackEnterpriseRateLimit
+* $wgSaintapediaFeedbackIpHashSecret
+* $wgSaintapediaFeedbackEnableEmail
+* $wgSaintapediaFeedbackContactEmailRetentionDays
+* $wgSaintapediaFeedbackRequireCaptcha
+* $wgSaintapediaFeedbackNotifyUsers
+* $wgSaintapediaFeedbackNotifyEmail
+* $wgSaintapediaFeedbackNotifyWatchers
+* $wgSaintapediaFeedbackShowPublicCounts
+* $wgSaintapediaFeedbackEnableTalkLink
+* $wgSaintapediaFeedbackAccessGroups
+* $wgSaintapediaFeedbackEmailAccessGroups
+* $wgSaintapediaFeedbackExportAccessGroups
+* $wgSaintapediaFeedbackNotifyUsersPage
+* $wgSaintapediaFeedbackShowPublicCountsPage
+* $wgSaintapediaFeedbackEnableTalkLinkPage
+* $wgSaintapediaFeedbackEnableLlm
+* $wgSaintapediaFeedbackLlmWebhook
+* $wgSaintapediaFeedbackLlmWebhookToken
+* $wgSaintapediaFeedbackLlmBatchSize
+}}
+The '''SaintapediaFeedback''' extension adds a floating '''Improve this article''' button to content pages so readers can report a problem without opening an edit form, and gives editors a triage dashboard at '''Special:SaintapediaFeedback''' to work through what arrives. Submissions are a category plus an optional short comment, anonymous by default, protected by {{ll|Extension:ConfirmEdit|ConfirmEdit}} and a per-IP daily rate limit.
+
+It is aimed at wikis whose readers greatly outnumber their editors, where the useful signal — "this is out of date", "this contradicts the infobox" — comes from people who will never edit. A handful of operational preferences can be changed from '''MediaWiki:''' pages without redeploying; access and anti-abuse controls are deliberately LocalSettings.php-only (see [[#User rights|below]]).
+
+Developed for [https://saintapedia.org/ Saintapedia].
+
+== Features ==
+
+* Floating '''Improve this article''' button on content pages; dismissable per browser tab, restorable from the screen-edge tab or '''Tools → Improve this article'''
+* Category + free-text submission, anonymous by default, with hCaptcha and a per-hashed-IP daily rate limit
+* Editor dashboard: filter by status and category, search, sort, bulk-process, per-article views
+* Audit trail of who processed what, plus optional {{ll|Extension:Echo|Echo}} notifications to a named user list and to page watchers — notifications never carry the raw reader comment, only a link back to the dashboard
+* Optional public '''resolutions''' view — curated summaries of what was done, never raw reader comments
+* Optional contact-email field, gated behind its own user right separately from dashboard access, with an optional retention job to clear old addresses automatically
+* JSON export for offline or LLM-assisted triage, gated behind its own user right
+* Three lower-stakes operational settings overridable from '''MediaWiki:''' pages, cached and invalidated on save/delete/move; access, rate limit, and CAPTCHA-required are LocalSettings.php-only
+* Fails closed: if captcha is required but unavailable, submissions are rejected rather than let through
+
+== Installation ==
+
+{{ExtensionInstall
+|SaintapediaFeedback
+|registration=required
+|db-update=true
+|custom-steps=* Optional: {{ll|Extension:ConfirmEdit|ConfirmEdit}} for captcha, {{ll|Extension:Echo|Echo}} for notifications. Load both before this extension.
+}}
+
+Clone from GitHub:
+
+<syntaxhighlight lang="bash">
+cd extensions/
+git clone https://github.com/Saintapedia/SaintapediaFeedback.git SaintapediaFeedback
+</syntaxhighlight>
+
+Add to <code>LocalSettings.php</code>:
+
+<syntaxhighlight lang="php">
+wfLoadExtension( 'SaintapediaFeedback' );
+</syntaxhighlight>
+
+The extension creates its own tables (<code>spf_feedback</code>, <code>spf_feedback_log</code>), so '''<code>update.php</code> must be run''' on install and after upgrades.
+
+=== Optional dependencies ===
+
+; {{ll|Extension:ConfirmEdit|ConfirmEdit}}
+: Needed for captcha on submissions. In public mode the extension fails closed — if a captcha is required but ConfirmEdit is not loaded or is misconfigured, the submission is rejected. Use '''real''' hCaptcha keys, not test keys.
+; {{ll|Extension:Echo|Echo}}
+: Enables notifications to the notify-user list and to watchers of the article. Without Echo, feedback is still recorded; it simply does not notify.
+
+== Configuration ==
+
+=== Modes ===
+
+<code>$wgSaintapediaFeedbackMode</code> selects a defaults profile rather than a feature set:
+
+{| class="wikitable"
+! Mode !! For !! Captcha !! Rate limit !! Comment length !! Email field !! Dashboard access default
+|-
+| <code>public</code> (default) || Open reader-facing wikis || Required || 5 / IP / day || 500 chars || Off || sysop
+|-
+| <code>enterprise</code> || Logged-in intranet wikis || Off || 50 / IP / day || 5000 chars || Available || any named account (option C)
+|}
+
+Enterprise mode's dashboard-access default reflects that an intranet wiki
+typically has far more trusted logged-in staff than a public wiki's
+sysop-only default fits. Set <code>$wgSaintapediaFeedbackAccessGroups</code>
+explicitly to override either mode's default (e.g. keep sysop-only on an
+enterprise wiki).
+
+=== Main settings ===
+
+; <code>$wgSaintapediaFeedbackMode</code>
+: <code>public</code> or <code>enterprise</code>. Default: <code>public</code>.
+; <code>$wgSaintapediaFeedbackNamespaces</code>
+: Namespaces where the widget appears. Default: <code>[ NS_MAIN ]</code>.
+; <code>$wgSaintapediaFeedbackRateLimit</code> / <code>...EnterpriseRateLimit</code>
+: Submissions per hashed IP per day, public/enterprise mode respectively. Defaults: <code>5</code> / <code>50</code>. LocalSettings.php only (F-08) — not wiki-page overridable.
+; <code>$wgSaintapediaFeedbackIpHashSecret</code>
+: Dedicated secret for the rate-limit IP hash, HMAC'd with a UTC-date bucket so the hash changes daily and can't link a visitor indefinitely (F-07). Empty (default) falls back to <code>$wgSecretKey</code>; set a dedicated value so this hash can be rotated independently. Never put it on a wiki page.
+; <code>$wgSaintapediaFeedbackRequireCaptcha</code>
+: <code>null</code> = decide from mode; <code>true</code>/<code>false</code> to force. Default: <code>null</code>. LocalSettings.php only (F-08).
+; <code>$wgSaintapediaFeedbackEnableEmail</code>
+: Offer an optional contact-email field. Stores a reader-supplied address in plaintext — see [[#Privacy and security|Privacy and security]]. Default: <code>false</code>.
+; <code>$wgSaintapediaFeedbackContactEmailRetentionDays</code>
+: Days after submission before <code>maintenance/ExpireContactEmails.php</code> clears <code>fb_contact_email</code> (sets it NULL; the rest of the row is kept). Default: <code>0</code> (disabled). Only relevant when contact email is/was enabled.
+; <code>$wgSaintapediaFeedbackNotifyUsers</code>
+: Usernames to notify via Echo. Default: <code>[]</code>.
+; <code>$wgSaintapediaFeedbackNotifyWatchers</code>
+: Also notify watchers of the article. Default: <code>true</code>. Only notifies watchers who already pass the dashboard-access check.
+; <code>$wgSaintapediaFeedbackShowPublicCounts</code>
+: Show open/resolved counts to readers. Default: <code>false</code>.
+; <code>$wgSaintapediaFeedbackEnableTalkLink</code>
+: Offer a Talk-page link on actioned items. Default: <code>true</code>.
+; <code>$wgSaintapediaFeedbackAccessGroups</code>
+: Groups granted dashboard access. Empty (default) picks a mode-appropriate default — see the Modes table above. LocalSettings.php only (F-08).
+; <code>$wgSaintapediaFeedbackEmailAccessGroups</code> / <code>$wgSaintapediaFeedbackExportAccessGroups</code>
+: Same, for contact-email visibility and for JSON export — both default to <code>[ 'sysop' ]</code> regardless of mode. LocalSettings.php only. A <code>*</code> token is never honored in <code>EmailAccessGroups</code> — contact email can never be made visible to anonymous/everyone, regardless of configuration (F-08).
+; <code>$wgSaintapediaFeedbackEnableLlm</code>
+: Master switch for automated LLM triage. Default: <code>false</code>. Non-dry-run <code>maintenance/ProcessFeedbackLlm.php</code> refuses to post or mark rows processed while this is off, even with a <code>--webhook</code> command-line override.
+; <code>$wgSaintapediaFeedbackLlmWebhook</code> / <code>...Token</code> / <code>...BatchSize</code>
+: Optional webhook for LLM-assisted triage. Defaults: <code>''</code>, <code>''</code>, <code>100</code>. The token is a secret — keep it in <code>LocalSettings.php</code> or the environment.
+
+Each remaining <code>MediaWiki:</code> page name (notify-users, show-public-counts, enable-talklink) is itself renameable via the matching <code>*Page</code> variable (for example <code>$wgSaintapediaFeedbackNotifyUsersPage</code>).
+
+=== User rights ===
+
+The three rights are '''independent'''. Granting dashboard access does not grant the other two.
+
+{| class="wikitable"
+! Right !! Default !! Grants
+|-
+| <code>saintapediafeedback-view</code> || sysop (public) / any named account (enterprise) || Open the dashboard, process and bulk-action feedback
+|-
+| <code>saintapediafeedback-viewemail</code> || sysop || See the optional contact-email field
+|-
+| <code>saintapediafeedback-export</code> || sysop || Download the JSON export
+|}
+
+The split exists so a wiki can hand triage to a broad editor group while keeping reader contact details and bulk offline downloads with a smaller one.
+
+An '''empty <code>*AccessGroups</code> array is not "nobody"''' — it falls back to the mode-appropriate default (dashboard access) or sysop (email/export). Restricting email or export to nobody takes two steps: revoke the right and point the group list at a dummy token.
+
+<syntaxhighlight lang="php">
+$wgGroupPermissions['sysop']['saintapediafeedback-viewemail'] = false;
+$wgSaintapediaFeedbackEmailAccessGroups = [ 'no-one' ];
+</syntaxhighlight>
+
+A block revokes both submission and dashboard access immediately, including for administrators, so no extension-specific ban list is needed.
+
+=== Wiki config (MediaWiki: pages) ===
+
+Three operational preferences — not access or anti-abuse controls — can be overridden from pages in the '''MediaWiki:''' namespace, which core restricts to holders of <code>editinterface</code> (by default sysop and interface-admin). One value per line; blank lines, <code>#</code>/<code>;</code> comment lines, inline <code># comments</code>, and a leading wiki-list <code>*</code> are ignored. Changes take effect on save, delete, or move — there is no cache wait.
+
+'''If a page is missing or empty, the PHP value applies.''' Leave a page uncreated unless you intend to override it.
+
+{| class="wikitable"
+! Page !! Format !! Overrides
+|-
+| <code>MediaWiki:SaintapediaFeedback-notify-users</code> || one username per line || <code>$wgSaintapediaFeedbackNotifyUsers</code>
+|-
+| <code>MediaWiki:SaintapediaFeedback-show-public-counts</code> || <code>true</code>/<code>false</code> || <code>$wgSaintapediaFeedbackShowPublicCounts</code>
+|-
+| <code>MediaWiki:SaintapediaFeedback-enable-talklink</code> || <code>true</code>/<code>false</code> || <code>$wgSaintapediaFeedbackEnableTalkLink</code>
+|}
+
+Boolean pages accept <code>true</code>/<code>yes</code>/<code>on</code>/<code>1</code> and <code>false</code>/<code>no</code>/<code>off</code>/<code>0</code>, case-insensitively; anything else is treated as no override.
+
+'''Access, contact-email visibility, export access, the rate limit, and CAPTCHA-required are deliberately NOT on this list''' (2026-09-10 review, F-08). They used to be wiki-page overridable the same way, but that let anyone holding <code>editinterface</code> weaken anti-abuse or access controls with a wiki edit and no deploy or code review. Set <code>$wgSaintapediaFeedbackAccessGroups</code>, <code>EmailAccessGroups</code>, <code>ExportAccessGroups</code>, <code>RateLimit</code>/<code>EnterpriseRateLimit</code>, and <code>RequireCaptcha</code> directly in <code>LocalSettings.php</code> instead.
+
+'''Never put a secret on a MediaWiki: page.''' Those pages are world-readable even though editing them is restricted. The hCaptcha secret key, the dedicated IP-hash secret, and the LLM webhook token are deliberately not overridable on-wiki.
+
+== Usage ==
+
+; Readers
+: The floating button on an article, or '''Tools → Improve this article'''.
+; Editors
+: '''Special:SaintapediaFeedback''', or '''Tools → Page feedback''' on an article for that page's items. The default filter is '''New'''.
+; Per article
+: <code>Special:SaintapediaFeedback/&lt;pageid&gt;</code>
+; Per-item history
+: <code>Special:SaintapediaFeedback/detail/&lt;id&gt;</code> — full status-transition history, not just the last change.
+; Public resolutions
+: <code>Special:SaintapediaFeedback/resolutions/&lt;pageid&gt;</code> — curated summaries only.
+
+Submissions from the widget go through the API module <code>action=saintapediafeedback</code>.
+
+== Privacy and security ==
+
+* '''IP addresses are never stored in plaintext.''' Rate limiting uses an HMAC of the address over a dedicated, rotatable secret plus a UTC-date bucket, so the stored hash changes every day and cannot link a visitor indefinitely.
+* '''The contact-email field is off by default.''' Enabling it stores a reader-supplied address in plaintext in the database. Decide who should be able to read it before switching it on, and set <code>$wgSaintapediaFeedbackContactEmailRetentionDays</code> plus schedule <code>maintenance/ExpireContactEmails.php</code> if you want it to age out automatically.
+* '''The JSON export contains neither contact emails nor IP hashes.''' Export access and email visibility are separate rights so that bulk download cannot become a way around the email restriction.
+* '''Echo notifications never carry the raw reader comment.''' A notification links back to the dashboard; the comment itself is only ever visible there, to someone who currently passes the access check.
+* '''Contact-email visibility can never be made public.''' A <code>*</code> token in <code>$wgSaintapediaFeedbackEmailAccessGroups</code> is always ignored, regardless of how it got there.
+* '''Captcha-required and the rate limit are security controls''' and, as of this review, are LocalSettings.php-only — not wiki-page overridable, so weakening them requires a deploy and code review, not just a wiki edit.
+* '''Captcha fails closed.''' If a captcha is required but ConfirmEdit/hCaptcha is unavailable or misconfigured, submissions are rejected rather than silently accepted.
+* A rate limit alone will not stop an attacker rotating IPs or using a VPN — hCaptcha is the real backstop against scripted abuse.
+
+== See also ==
+
+* {{ll|Extension:ConfirmEdit|ConfirmEdit}} — captcha backend
+* {{ll|Extension:Echo|Echo}} — notifications
+* [https://github.com/Saintapedia/SaintapediaFeedback/blob/main/docs/PUBLIC-DEPLOYMENT.md Public deployment runbook]
+* [https://github.com/Saintapedia/SaintapediaFeedback/issues Issue tracker]
+
+{{Used by}}
+
+[[Category:Extensions by Saintapedia{{#translation:}}]]

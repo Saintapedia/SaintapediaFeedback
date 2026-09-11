@@ -43,8 +43,10 @@ class SpecialFeedback extends SpecialPage {
 	}
 
 	/**
-	 * Allow access via MediaWiki:SaintapediaFeedback-access groups (default: sysop),
-	 * or the saintapediafeedback-view right.
+	 * Allow access via $wgSaintapediaFeedbackAccessGroups (unset/empty
+	 * default: FeedbackAccess::defaultGroupsForMode() — sysop in public
+	 * mode, any named account in enterprise mode), or the
+	 * saintapediafeedback-view right.
 	 *
 	 * @param User $user
 	 * @return bool
@@ -164,19 +166,6 @@ class SpecialFeedback extends SpecialPage {
 	private function showDashboard(): void {
 		$out = $this->getOutput();
 		$this->setLocalizedPageTitle( $this->msg( 'saintapediafeedback-dashboard-title' ) );
-
-		// Help editors find the access config page
-		$accessTitle = FeedbackAccess::getAccessPageTitle();
-		if ( $accessTitle ) {
-			$out->addSubtitle(
-				$this->msg( 'saintapediafeedback-access-help' )
-					->rawParams(
-						Html::element( 'a', [ 'href' => $accessTitle->getLocalURL() ],
-							$accessTitle->getPrefixedText() )
-					)
-					->parse()
-			);
-		}
 
 		$filters = $this->getFiltersFromRequest();
 		$limit = self::PAGE_SIZE;
@@ -487,7 +476,16 @@ class SpecialFeedback extends SpecialPage {
 		);
 
 		if ( !$updated ) {
-			return false;
+			// A well-formed, CSRF-valid POST whose row still couldn't be
+			// updated: either the F-05 optimistic-concurrency guard lost a
+			// race (another moderator changed fb_status between this
+			// request's read and write), or the id/page no longer matches.
+			// Previously this fell through to a silent re-render with no
+			// explanation; PRG-redirect with an explicit conflict flash
+			// instead so the moderator knows to check the item's current
+			// state rather than assume the click did nothing.
+			$this->redirectAfterMutation( [ 'spfconflict' => '1' ] );
+			return true;
 		}
 
 		// Optional Talk note: short link only (never dumps work notes / raw feedback)
@@ -614,6 +612,13 @@ class SpecialFeedback extends SpecialPage {
 	/** Show success/Talk banners after a PRG redirect (query flags only). */
 	private function showMutationFlash(): void {
 		$request = $this->getRequest();
+		if ( $request->getCheck( 'spfconflict' ) ) {
+			$this->getOutput()->addHTML(
+				'<div class="errorbox">' .
+				$this->msg( 'saintapediafeedback-status-conflict' )->escaped() .
+				'</div>'
+			);
+		}
 		if ( $request->getCheck( 'spfok' ) ) {
 			if ( $request->getVal( 'spfn' ) !== null ) {
 				$this->getOutput()->addHTML(
