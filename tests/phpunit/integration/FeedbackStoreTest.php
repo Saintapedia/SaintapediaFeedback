@@ -28,8 +28,18 @@ class FeedbackStoreTest extends MediaWikiIntegrationTestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
-		$this->tablesUsed[] = 'spf_feedback';
-		$this->tablesUsed[] = 'spf_feedback_log';
+		// $tablesUsed was a real declared property through MW 1.44 (table
+		// reset between tests); MW 1.45 removed it in favor of automatic
+		// table-usage tracking (ChangedTablesTracker) and no longer reads
+		// it at all, so setting it there is a dead, deprecated dynamic
+		// property under PHP 8.4's stricter enforcement. property_exists()
+		// here checks the *declared* property, not one we're about to
+		// create, so this stays correct on both sides of that MW version
+		// split without needing a separate compatibility test.
+		if ( property_exists( $this, 'tablesUsed' ) ) {
+			$this->tablesUsed[] = 'spf_feedback';
+			$this->tablesUsed[] = 'spf_feedback_log';
+		}
 		$this->store = MediaWikiServices::getInstance()
 			->getService( 'SaintapediaFeedback.FeedbackStore' );
 	}
