@@ -70,4 +70,47 @@ class FeedbackNotifierTest extends MediaWikiIntegrationTestCase {
 			'notifyNew() logged an internal failure -- likely a Title type mismatch: ' . (string)$loggedError
 		);
 	}
+
+	/**
+	 * Reproduces the actual production failure mode directly: a PHP
+	 * TypeError from a wrong-typed argument at the notifyNew() call site
+	 * is NOT caught by notifyNew()'s own internal try/catch, because the
+	 * type check happens before the method body (and that try/catch)
+	 * ever runs. This is why ApiSubmitFeedback needs its own try/catch
+	 * around the call, not just FeedbackNotifier's internal one.
+	 *
+	 * @phpcs:disable -- deliberately wrong argument type
+	 */
+	public function testUnguardedCallThrowsOnAWrongTypeTitleArgument(): void {
+		$this->expectException( \TypeError::class );
+		// @phan-suppress-next-line PhanTypeMismatchArgument deliberate
+		FeedbackNotifier::notifyNew(
+			1,
+			'not a Title object',
+			[ 'inaccurate' ],
+			null,
+			$this->getTestUser()->getUser()
+		);
+	}
+
+	/**
+	 * The other half of the same scenario: wrapping the call the way
+	 * ApiSubmitFeedback::execute() does turns that same TypeError into a
+	 * caught, logged failure instead of a propagating exception.
+	 */
+	public function testGuardedCallCatchesTheSameWrongTypeTitleArgument(): void {
+		try {
+			// @phan-suppress-next-line PhanTypeMismatchArgument deliberate
+			FeedbackNotifier::notifyNew(
+				1,
+				'not a Title object',
+				[ 'inaccurate' ],
+				null,
+				$this->getTestUser()->getUser()
+			);
+			$this->fail( 'Expected a TypeError to reach this try block' );
+		} catch ( \Throwable $e ) {
+			$this->assertInstanceOf( \TypeError::class, $e );
+		}
+	}
 }
