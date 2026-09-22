@@ -39,13 +39,19 @@ class FeedbackNotifierTest extends MediaWikiIntegrationTestCase {
 			->newFromText( 'Main Page' );
 		$this->assertInstanceOf( \MediaWiki\Title\Title::class, $title );
 
-		// The assertion is that this does not throw a TypeError. notifyNew()
-		// has its own internal try/catch, so a regression here would not
-		// surface as a thrown exception in this test -- it would instead log
-		// to the SaintapediaFeedback channel and silently swallow the error,
-		// which is precisely the failure mode this test exists to catch.
-		// Assert on the debug log instead of assuming "didn't throw" is
-		// enough.
+		// Note on what this test does and doesn't catch: if the Title-import
+		// regression reappeared, this call would throw an *uncaught*
+		// TypeError right here -- a parameter-type mismatch happens at the
+		// call site, before notifyNew()'s body (and its internal try/catch)
+		// ever runs, so PHPUnit would report this test as an error, not a
+		// failed assertion below. That exact mechanism is what
+		// testUnguardedCallThrowsOnAWrongTypeTitleArgument pins directly.
+		// What the log assertion below covers is a different, narrower
+		// class of failure: something *inside* notifyNew()'s body (once
+		// execution has actually entered it) throwing and being silently
+		// caught by its own internal try/catch -- "didn't throw" alone
+		// wouldn't reveal that, since the internal catch's whole job is to
+		// swallow it.
 		$loggedError = null;
 		$this->setLogger( 'SaintapediaFeedback', new class( $loggedError ) extends \Psr\Log\AbstractLogger {
 			private $sink;
