@@ -3,6 +3,7 @@
 namespace MediaWiki\Extension\SaintapediaFeedback\Tests\Integration;
 
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier;
+use MediaWiki\MediaWikiServices;
 use MediaWikiIntegrationTestCase;
 
 /**
@@ -17,6 +18,14 @@ use MediaWikiIntegrationTestCase;
  *
  *   php vendor/bin/phpunit --group SaintapediaFeedback
  *
+ * @group Database Needed for real DB access: notifyNew() unconditionally
+ *   goes through FeedbackWikiConfig's on-wiki-override lookup (a
+ *   WANObjectCache-backed MediaWiki:-namespace page existence check),
+ *   regardless of the SaintapediaFeedbackNotifyUsers config value passed
+ *   in setUp() -- discovered on MW 1.45, which disables DB access outside
+ *   @group Database tests and surfaced this as a caught-and-logged
+ *   "Database backend disabled" failure that looked identical to a real
+ *   regression until traced down.
  * @group SaintapediaFeedback
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier
  */
@@ -31,6 +40,18 @@ class FeedbackNotifierTest extends MediaWikiIntegrationTestCase {
 			'SaintapediaFeedbackNotifyWatchers' => false,
 			'SaintapediaFeedbackNotifyEmail' => '',
 		] );
+	}
+
+	/**
+	 * None of these tests need a real, persisted user account -- they're
+	 * about the Title parameter, not about who submitted. getTestUser()
+	 * persists to the test database and, as of MW 1.45, throws a
+	 * LogicException outside a @group Database test; an anonymous User
+	 * is real (satisfies notifyNew()'s `User $agent` type) without either
+	 * requirement, and is the fix MW 1.45's own error message recommends.
+	 */
+	private function anonymousUser(): \User {
+		return MediaWikiServices::getInstance()->getUserFactory()->newAnonymous();
 	}
 
 	public function testNotifyNewAcceptsARealTitleFromTitleFactory(): void {
@@ -68,7 +89,7 @@ class FeedbackNotifierTest extends MediaWikiIntegrationTestCase {
 			$title,
 			[ 'inaccurate' ],
 			'Test comment',
-			$this->getTestUser()->getUser()
+			$this->anonymousUser()
 		);
 
 		$this->assertNull(
@@ -95,7 +116,7 @@ class FeedbackNotifierTest extends MediaWikiIntegrationTestCase {
 			'not a Title object',
 			[ 'inaccurate' ],
 			null,
-			$this->getTestUser()->getUser()
+			$this->anonymousUser()
 		);
 	}
 
@@ -112,7 +133,7 @@ class FeedbackNotifierTest extends MediaWikiIntegrationTestCase {
 				'not a Title object',
 				[ 'inaccurate' ],
 				null,
-				$this->getTestUser()->getUser()
+				$this->anonymousUser()
 			);
 			$this->fail( 'Expected a TypeError to reach this try block' );
 		} catch ( \Throwable $e ) {

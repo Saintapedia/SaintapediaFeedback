@@ -24,8 +24,14 @@ class ApiSubmitFeedbackTest extends ApiTestCase {
 
 	protected function setUp(): void {
 		parent::setUp();
-		$this->tablesUsed[] = 'spf_feedback';
-		$this->tablesUsed[] = 'spf_feedback_log';
+		// See FeedbackStoreTest for why this is guarded: $tablesUsed was
+		// removed from MediaWikiIntegrationTestCase in MW 1.45 (replaced by
+		// automatic table-usage tracking) and setting it there is now a
+		// deprecated dynamic property under PHP 8.4.
+		if ( property_exists( $this, 'tablesUsed' ) ) {
+			$this->tablesUsed[] = 'spf_feedback';
+			$this->tablesUsed[] = 'spf_feedback_log';
+		}
 		$this->overrideConfigValues( [
 			'SaintapediaFeedbackMode' => 'enterprise',
 			'SaintapediaFeedbackRequireCaptcha' => false,
