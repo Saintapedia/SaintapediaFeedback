@@ -5,8 +5,8 @@ namespace MediaWiki\Extension\SaintapediaFeedback;
 use Config;
 use ExtensionRegistry;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\Title;
 use SpecialPage;
-use Title;
 use User;
 use Wikimedia\Rdbms\ILoadBalancer;
 
@@ -49,7 +49,7 @@ class FeedbackNotifier {
 			}
 			self::notifyEmail( $config, $feedbackId, $title, $categories, $comment );
 		} catch ( \Throwable $e ) {
-			wfDebugLog( 'SaintapediaFeedback', 'notifyNew failed: ' . $e->getMessage() );
+			wfDebugLog( 'SaintapediaFeedback', "notifyNew failed for feedback #{$feedbackId}: " . $e->getMessage() );
 		}
 	}
 

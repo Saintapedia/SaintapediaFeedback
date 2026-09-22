@@ -5,8 +5,8 @@ namespace MediaWiki\Extension\SaintapediaFeedback;
 use CommentStoreComment;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Revision\SlotRecord;
+use MediaWiki\Title\Title;
 use SpecialPage;
-use Title;
 use User;
 use WikitextContent;
 
