@@ -5,10 +5,10 @@ namespace MediaWiki\Extension\SaintapediaFeedback;
 use Config;
 use DatabaseUpdater;
 use MediaWiki\MediaWikiServices;
+use MediaWiki\Title\Title;
 use OutputPage;
 use Skin;
 use SpecialPage;
-use Title;
 
 class Hooks {
 
@@ -256,7 +256,7 @@ class Hooks {
 	}
 
 	/**
-	 * @param \MediaWiki\Title\Title|Title|null $title
+	 * @param Title|null $title
 	 */
 	private static function maybeInvalidateConfigCaches( $title ): void {
 		if ( !$title ) {

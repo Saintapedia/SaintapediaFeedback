@@ -8,6 +8,7 @@ use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
 use MediaWiki\Extension\SaintapediaFeedback\IpHasher;
+use MediaWiki\Logger\LoggerFactory;
 use MediaWiki\MediaWikiServices;
 use TitleFactory;
 use Wikimedia\ParamValidator\ParamValidator;
@@ -136,7 +137,24 @@ class ApiSubmitFeedback extends ApiBase {
 			$this->dieWithError( 'saintapediafeedback-error-ratelimit' );
 		}
 
-		FeedbackNotifier::notifyNew( $id, $title, $categories, $comment, $user );
+		// The feedback row is already committed at this point (tryInsertUnderLimit()
+		// returned an id above) -- a submission is successful the moment that row
+		// exists. Notification is best-effort and must never turn a stored
+		// submission into an API error, which is why this call gets its own
+		// try/catch here rather than relying solely on FeedbackNotifier's internal
+		// one: a PHP TypeError from a parameter-type mismatch is thrown at the call
+		// site, before notifyNew()'s own body (and its own try/catch) ever runs.
+		try {
+			FeedbackNotifier::notifyNew( $id, $title, $categories, $comment, $user );
+		} catch ( \Throwable $e ) {
+			LoggerFactory::getInstance( 'SaintapediaFeedback' )->error(
+				'Notification failed after feedback {feedbackId} was stored',
+				[
+					'feedbackId' => $id,
+					'exception' => $e,
+				]
+			);
+		}
 
 		$this->getResult()->addValue( null, $this->getModuleName(), [
 			'result' => 'success',

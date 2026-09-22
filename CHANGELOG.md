@@ -4,6 +4,43 @@ Releases are tagged. Pin a production wiki to a tag, not to floating `main`.
 
 Versions before 1.8.0 were not changelogged; their history is in git.
 
+## 1.9.1 — 2026-09-22
+
+MediaWiki 1.44+ compatibility fix, from a detailed follow-up review of 1.9.0.
+No schema change; `update.php` is not required for this release.
+
+### Compatibility fixes
+
+- **MediaWiki 1.44+ `Title` compatibility.** Five files (`FeedbackNotifier`,
+  `FeedbackWikiConfig`, `Hooks`, `Special/SpecialFeedback`, `TalkLinkPoster`)
+  imported the legacy global `Title` class, which MediaWiki removed as an
+  alias in 1.44 (`MediaWiki\Title\Title` is the real class since 1.39). On
+  affected MediaWiki versions, new feedback was written to the database, but
+  submission then returned `internal_api_error_TypeError` while invoking
+  `FeedbackNotifier`, causing the reader to see a generic failure and
+  potentially retry an already-saved submission. All five imports now use
+  `MediaWiki\Title\Title`. A regression test scans `includes/` for the
+  removed alias.
+
+### Hardening
+
+- **A notification failure can no longer turn a successful submission into
+  an API error.** `ApiSubmitFeedback` now wraps the `FeedbackNotifier::notifyNew()`
+  call in its own try/catch: once `tryInsertUnderLimit()` has returned an id,
+  the submission has succeeded, and Echo/email notification is best-effort.
+  Failures are logged via the `SaintapediaFeedback` PSR-3 channel with the
+  feedback id, not surfaced to the API caller. `FeedbackNotifier`'s own
+  internal try/catch is unchanged and still guards failures that occur once
+  its body has started executing; the two layers protect different failure
+  points (see code comments).
+
+### Operational note
+
+If you deployed 1.9.0 on MediaWiki 1.44+, check `Special:SaintapediaFeedback`
+for feedback rows created by submissions that appeared to fail — the
+database insert had already succeeded before the `TypeError` occurred, so a
+reader who saw an error and retried may have created a row without knowing it.
+
 ## 1.9.0 — 2026-09-11
 
 Fixes for a 2026-09-10 external code review (source-verified against this repo;

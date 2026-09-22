@@ -3,7 +3,7 @@
 namespace MediaWiki\Extension\SaintapediaFeedback;
 
 use MediaWiki\MediaWikiServices;
-use Title;
+use MediaWiki\Title\Title;
 
 /**
  * Generic on-wiki override for non-secret operational knobs: notify-user
