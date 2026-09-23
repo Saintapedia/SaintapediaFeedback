@@ -18,14 +18,16 @@ use MediaWikiIntegrationTestCase;
  *
  *   php vendor/bin/phpunit --group SaintapediaFeedback
  *
- * @group Database Needed for real DB access: notifyNew() unconditionally
- *   goes through FeedbackWikiConfig's on-wiki-override lookup (a
- *   WANObjectCache-backed MediaWiki:-namespace page existence check),
- *   regardless of the SaintapediaFeedbackNotifyUsers config value passed
- *   in setUp() -- discovered on MW 1.45, which disables DB access outside
- *   @group Database tests and surfaced this as a caught-and-logged
- *   "Database backend disabled" failure that looked identical to a real
- *   regression until traced down.
+ * Needs the Database group: notifyNew() unconditionally goes through
+ * FeedbackWikiConfig's on-wiki-override lookup (a WANObjectCache-backed
+ * MediaWiki:-namespace page existence check), regardless of the
+ * SaintapediaFeedbackNotifyUsers config value passed in setUp() --
+ * discovered on MW 1.45, which disables DB access outside Database-group
+ * tests and surfaced this as a caught-and-logged "Database backend
+ * disabled" failure that looked identical to a real regression until
+ * traced down.
+ *
+ * @group Database
  * @group SaintapediaFeedback
  * @covers \MediaWiki\Extension\SaintapediaFeedback\FeedbackNotifier
  */
