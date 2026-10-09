@@ -385,3 +385,7 @@ See [CHANGELOG.md](CHANGELOG.md) for 1.8.0 and later.
 **1.4.2** — preserve work notes on status change; primary-DB rate limit; paginate per-article view; lone `*` access token; omit PII from list queries; IP-hash index; read-only / PRG hardening.
 
 **1.4.0** — audit trail, toolbox counts, watchlist Echo, optional public counts, priority column for future SME, access config page.
+
+## License
+
+GPL-2.0-or-later. See [COPYING](COPYING).
