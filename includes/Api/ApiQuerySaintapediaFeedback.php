@@ -187,6 +187,7 @@ class ApiQuerySaintapediaFeedback extends ApiQueryBase {
 			],
 			'pageid' => [
 				ParamValidator::PARAM_TYPE => 'integer',
+				IntegerDef::PARAM_MIN => 1,
 			],
 			'category' => [
 				ParamValidator::PARAM_TYPE => FeedbackFilters::VALID_CATEGORIES,

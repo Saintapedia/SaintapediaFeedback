@@ -4,7 +4,6 @@ namespace MediaWiki\Extension\SaintapediaFeedback;
 
 use Config;
 use DatabaseUpdater;
-use MediaWiki\Html\Html;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\Title;
 use OutputPage;
@@ -105,19 +104,20 @@ class Hooks {
 
 		$url = SpecialPage::getTitleFor( 'SaintapediaFeedback', (string)$title->getArticleID() )
 			->getLocalURL();
-		$link = Html::element( 'a', [ 'href' => $url ],
-			$out->msg( 'saintapediafeedback-pending-notice-link' )->text()
-		);
+		// Escaped by hand: the Html class is namespaced only from 1.40, and this
+		// extension declares MediaWiki >= 1.39.
+		$link = '<a href="' . htmlspecialchars( $url, ENT_QUOTES ) . '">'
+			. htmlspecialchars( $out->msg( 'saintapediafeedback-pending-notice-link' )->text(), ENT_QUOTES )
+			. '</a>';
 		$text = $out->msg( 'saintapediafeedback-pending-notice' )
 			->numParams( $new )
 			->rawParams( $link )
 			->parse();
 
-		$out->addSubtitle( Html::rawElement(
-			'div',
-			[ 'class' => 'mw-message-box mw-message-box-notice spf-pending-notice', 'role' => 'status' ],
-			$text
-		) );
+		$out->addSubtitle(
+			'<div class="mw-message-box mw-message-box-notice spf-pending-notice" role="status">'
+			. $text . '</div>'
+		);
 	}
 
 	/**
