@@ -4,6 +4,7 @@ namespace MediaWiki\Extension\SaintapediaFeedback;
 
 use Config;
 use DatabaseUpdater;
+use MediaWiki\Html\Html;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Title\Title;
 use OutputPage;
@@ -75,6 +76,48 @@ class Hooks {
 		] );
 
 		$out->addModules( 'ext.saintapediafeedback.widget' );
+
+		self::addPendingNotice( $out, $title );
+	}
+
+	/**
+	 * Small notice under the page title for users who may view the feedback
+	 * dashboard, when this page has items still in status "new". Readers and
+	 * users without the right never see it.
+	 */
+	private static function addPendingNotice( OutputPage $out, Title $title ): void {
+		$user = $out->getUser();
+		if ( !FeedbackAccess::userCanManage( $user ) ) {
+			return;
+		}
+
+		try {
+			$store = MediaWikiServices::getInstance()->getService( 'SaintapediaFeedback.FeedbackStore' );
+			$counts = $store->getPageCounts( $title->getArticleID() );
+		} catch ( \Throwable $e ) {
+			// store/table may not exist yet
+			return;
+		}
+		$new = (int)$counts['new'];
+		if ( $new < 1 ) {
+			return;
+		}
+
+		$url = SpecialPage::getTitleFor( 'SaintapediaFeedback', (string)$title->getArticleID() )
+			->getLocalURL();
+		$link = Html::element( 'a', [ 'href' => $url ],
+			$out->msg( 'saintapediafeedback-pending-notice-link' )->text()
+		);
+		$text = $out->msg( 'saintapediafeedback-pending-notice' )
+			->numParams( $new )
+			->rawParams( $link )
+			->parse();
+
+		$out->addSubtitle( Html::rawElement(
+			'div',
+			[ 'class' => 'mw-message-box mw-message-box-notice spf-pending-notice', 'role' => 'status' ],
+			$text
+		) );
 	}
 
 	/**

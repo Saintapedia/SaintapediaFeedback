@@ -4,6 +4,23 @@ Releases are tagged. Pin a production wiki to a tag, not to floating `main`.
 
 Versions before 1.8.0 were not changelogged; their history is in git.
 
+## 1.10.0 — unreleased
+
+Read-only API for feedback, and a pending-feedback notice on pages.
+No schema change; `update.php` is not required.
+
+- **New API list module** `action=query&list=saintapediafeedback` (prefix `spf`),
+  for bots and scripts. Keyset paging (`spfcontinue`), status / category /
+  page / search / since filters, limit up to 500. Same row shape as the
+  export. Contact email only with `spfincludeemail` and the email right.
+  Requires the `viewfeedback` grant (`saintapediafeedback-view` and
+  `-export`). Bot passwords must tick "Read and export article feedback".
+- **Pending-feedback notice.** Users who can open the dashboard see a small
+  notice under the page title when the page has items with status "new".
+  Readers never see it.
+- Internal: `FeedbackStore::exportRow()` extracted so the API and the export
+  share one field list. Output of the export is unchanged.
+
 ## 1.9.1 — 2026-09-22
 
 MediaWiki 1.44+ compatibility fix, from a detailed follow-up review of 1.9.0.

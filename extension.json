@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.9.1",
+	"version": "1.10.0",
 	"author": [
 		"Saintapedia contributors"
 	],
@@ -31,6 +31,15 @@
 			]
 		}
 	},
+	"APIListModules": {
+		"saintapediafeedback": {
+			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Api\\ApiQuerySaintapediaFeedback",
+			"services": [
+				"SaintapediaFeedback.FeedbackStore",
+				"TitleFactory"
+			]
+		}
+	},
 	"SpecialPages": {
 		"SaintapediaFeedback": {
 			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Special\\SpecialFeedback",
@@ -51,6 +60,18 @@
 			"saintapediafeedback-viewemail": true,
 			"saintapediafeedback-export": true
 		}
+	},
+	"GrantPermissions": {
+		"viewfeedback": {
+			"saintapediafeedback-view": true,
+			"saintapediafeedback-export": true
+		}
+	},
+	"GrantPermissionGroups": {
+		"viewfeedback": "administration"
+	},
+	"GrantRiskGroups": {
+		"viewfeedback": "low"
 	},
 	"Hooks": {
 		"BeforePageDisplay": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onBeforePageDisplay",
