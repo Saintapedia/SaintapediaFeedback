@@ -75,6 +75,49 @@ class Hooks {
 		] );
 
 		$out->addModules( 'ext.saintapediafeedback.widget' );
+
+		self::addPendingNotice( $out, $title );
+	}
+
+	/**
+	 * Small notice under the page title for users who may view the feedback
+	 * dashboard, when this page has items still in status "new". Readers and
+	 * users without the right never see it.
+	 */
+	private static function addPendingNotice( OutputPage $out, Title $title ): void {
+		$user = $out->getUser();
+		if ( !FeedbackAccess::userCanManage( $user ) ) {
+			return;
+		}
+
+		try {
+			$store = MediaWikiServices::getInstance()->getService( 'SaintapediaFeedback.FeedbackStore' );
+			$counts = $store->getPageCounts( $title->getArticleID() );
+		} catch ( \Throwable $e ) {
+			// store/table may not exist yet
+			return;
+		}
+		$new = (int)$counts['new'];
+		if ( $new < 1 ) {
+			return;
+		}
+
+		$url = SpecialPage::getTitleFor( 'SaintapediaFeedback', (string)$title->getArticleID() )
+			->getLocalURL();
+		// Escaped by hand: the Html class is namespaced only from 1.40, and this
+		// extension declares MediaWiki >= 1.39.
+		$link = '<a href="' . htmlspecialchars( $url, ENT_QUOTES ) . '">'
+			. htmlspecialchars( $out->msg( 'saintapediafeedback-pending-notice-link' )->text(), ENT_QUOTES )
+			. '</a>';
+		$text = $out->msg( 'saintapediafeedback-pending-notice' )
+			->numParams( $new )
+			->rawParams( $link )
+			->parse();
+
+		$out->addSubtitle(
+			'<div class="mw-message-box mw-message-box-notice spf-pending-notice" role="status">'
+			. $text . '</div>'
+		);
 	}
 
 	/**

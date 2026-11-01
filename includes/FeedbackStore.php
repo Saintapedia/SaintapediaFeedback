@@ -275,6 +275,12 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 		$status = $filters['status'] ?? null;
 		if ( is_string( $status ) && $status !== '' && $status !== 'all' ) {
 			$conds['fb_status'] = $status;
+		} elseif ( is_array( $status ) ) {
+			// API: multi-value status (allowlisted). All four (or none) = no filter.
+			$status = array_values( array_intersect( FeedbackFilters::VALID_STATUSES, $status ) );
+			if ( $status && count( $status ) < count( FeedbackFilters::VALID_STATUSES ) ) {
+				$conds['fb_status'] = $status;
+			}
 		}
 
 		$pageId = $filters['pageId'] ?? null;
@@ -302,6 +308,24 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 		}
 
 		$sort = ( $filters['sort'] ?? 'newest' ) === 'oldest' ? 'ASC' : 'DESC';
+
+		// API only: rows submitted at/after this TS_MW timestamp.
+		$since = $filters['since'] ?? null;
+		if ( is_string( $since ) && $since !== '' ) {
+			$conds[] = 'fb_timestamp >= ' . $db->addQuotes( $db->timestamp( $since ) );
+		}
+
+		// API only: keyset continuation [ TS_MW timestamp, fb_id ] of the
+		// first row NOT yet returned. Matches the ORDER BY below, so pages
+		// stay stable while new feedback arrives (OFFSET would shift).
+		$cont = $filters['continue'] ?? null;
+		if ( is_array( $cont ) && count( $cont ) === 2 ) {
+			$op = $sort === 'ASC' ? '>' : '<';
+			$cTs = $db->addQuotes( $db->timestamp( (string)$cont[0] ) );
+			$cId = (int)$cont[1];
+			$conds[] = "(fb_timestamp $op $cTs OR (fb_timestamp = $cTs AND fb_id $op= $cId))";
+		}
+
 		$options = [ 'ORDER BY' => "fb_timestamp $sort, fb_id $sort" ];
 		if ( $limit !== null ) {
 			$options['LIMIT'] = $limit;
@@ -715,17 +739,28 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 	/** Export filtered dashboard rows as structured data for LLM consumption. */
 	public function exportDashboard( array $filters, int $limit = 500 ): array {
 		$rows = $this->getDashboard( $filters, $limit, 0 );
-		return array_map( static function ( $row ) {
-			return [
-				'id'         => (int)$row->fb_id,
-				'pageId'     => (int)$row->fb_page_id,
-				'pageTitle'  => $row->fb_page_title,
-				'timestamp'  => $row->fb_timestamp,
-				'categories' => json_decode( $row->fb_categories, true ) ?? [],
-				'comment'    => $row->fb_comment,
-				'status'     => $row->fb_status,
-				'mode'       => $row->fb_mode,
-			];
-		}, $rows );
+		return array_map( [ self::class, 'exportRow' ], $rows );
+	}
+
+	/**
+	 * One MANAGER_LIST_FIELDS row in the export shape. Shared by
+	 * exportDashboard() (Special:SaintapediaFeedback/export) and the
+	 * list=saintapediafeedback API so both stay field-for-field identical.
+	 * Never includes contact email, IP hash, user id or work note.
+	 *
+	 * @param object $row
+	 * @return array<string,mixed>
+	 */
+	public static function exportRow( $row ): array {
+		return [
+			'id'         => (int)$row->fb_id,
+			'pageId'     => (int)$row->fb_page_id,
+			'pageTitle'  => $row->fb_page_title,
+			'timestamp'  => $row->fb_timestamp,
+			'categories' => json_decode( $row->fb_categories, true ) ?? [],
+			'comment'    => $row->fb_comment,
+			'status'     => $row->fb_status,
+			'mode'       => $row->fb_mode,
+		];
 	}
 }
