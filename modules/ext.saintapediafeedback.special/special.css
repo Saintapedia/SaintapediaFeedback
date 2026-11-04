@@ -1,56 +1,92 @@
 /* ── Special:SaintapediaFeedback dashboard ─────────────────────────────── */
 
+/*
+ * Status summary: one stat tile per status. Every tile sets its own
+ * background and text colour explicitly so the numbers stay readable on
+ * dark skins too (the old pills inherited the skin's text colour).
+ */
 .spf-summary-chips {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	margin: 0 0 1rem;
+	display: grid;
+	grid-template-columns: repeat( auto-fit, minmax( 9rem, 1fr ) );
+	gap: 10px;
+	margin: 0 0 1.25rem;
 }
 
 .spf-chip-filter {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 12px;
-	border: 1px solid #c8ccd1;
-	border-radius: 999px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	padding: 12px 14px;
 	background: #fff;
 	color: #202122;
+	border: 1px solid #c8ccd1;
+	border-top: 4px solid #72777d;
+	border-radius: 8px;
 	text-decoration: none;
-	font-size: 0.875rem;
+	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.06 );
+	transition: box-shadow 0.15s, transform 0.15s;
 }
 
 .spf-chip-filter:hover {
 	background: #f8f9fa;
+	color: #202122;
 	text-decoration: none;
+	box-shadow: 0 3px 8px rgba( 0, 0, 0, 0.12 );
+	transform: translateY( -1px );
 }
 
-.spf-chip-filter--active {
-	border-color: #3875d7;
-	background: #eaf2ff;
-	color: #1a4b99;
+.spf-chip-filter:focus-visible {
+	outline: 2px solid #3875d7;
+	outline-offset: 2px;
+}
+
+@media ( prefers-reduced-motion: reduce ) {
+	.spf-chip-filter,
+	.spf-chip-filter:hover {
+		transition: none;
+		transform: none;
+	}
+}
+
+.spf-chip-label {
+	font-size: 0.75rem;
 	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #444;
 }
 
 .spf-chip-count {
-	display: inline-block;
-	min-width: 1.4em;
-	padding: 0 6px;
-	border-radius: 999px;
-	background: #eaecf0;
-	font-size: 0.8rem;
-	text-align: center;
+	display: block;
+	font-size: 1.75rem;
+	font-weight: 700;
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums;
+	color: #202122;
 }
 
-.spf-chip-filter--active .spf-chip-count {
-	background: #3875d7;
-	color: #fff;
+.spf-chip-filter-new { border-top-color: #b26a00; }
+.spf-chip-filter-reviewed { border-top-color: #36c; }
+.spf-chip-filter-actioned { border-top-color: #00875f; }
+.spf-chip-filter-dismissed { border-top-color: #72777d; }
+.spf-chip-filter-all { border-top-color: #202122; }
+
+.spf-chip-filter-new .spf-chip-count { color: #8a4b00; }
+.spf-chip-filter-reviewed .spf-chip-count { color: #1a4b99; }
+.spf-chip-filter-actioned .spf-chip-count { color: #00664d; }
+.spf-chip-filter-dismissed .spf-chip-count { color: #3d4248; }
+
+/* Active tile: tinted background plus a ring in its accent colour */
+.spf-chip-filter--active {
+	background: #eaf2ff;
+	box-shadow: 0 0 0 2px #3875d7;
 }
 
-.spf-chip-filter-new .spf-chip-count { background: #fef6e7; }
-.spf-chip-filter-reviewed .spf-chip-count { background: #eaf3ff; }
-.spf-chip-filter-actioned .spf-chip-count { background: #d5fdf4; }
-.spf-chip-filter-dismissed .spf-chip-count { background: #eaecf0; }
+.spf-chip-filter-new.spf-chip-filter--active { background: #fff4d6; box-shadow: 0 0 0 2px #b26a00; }
+.spf-chip-filter-reviewed.spf-chip-filter--active { background: #eaf2ff; box-shadow: 0 0 0 2px #36c; }
+.spf-chip-filter-actioned.spf-chip-filter--active { background: #e0f7ef; box-shadow: 0 0 0 2px #00875f; }
+.spf-chip-filter-dismissed.spf-chip-filter--active,
+.spf-chip-filter-all.spf-chip-filter--active { background: #eef0f2; box-shadow: 0 0 0 2px #202122; }
 
 .spf-page-lookup-form {
 	margin: 0 0 1rem;
@@ -141,7 +177,9 @@
 	border: 1px solid #c8ccd1;
 	border-radius: 8px;
 	background: #fff;
+	color: #202122;
 	border-left-width: 4px;
+	box-shadow: 0 1px 3px rgba( 0, 0, 0, 0.05 );
 }
 
 .spf-status-new {
@@ -181,6 +219,7 @@
 	padding: 1px 8px;
 	border-radius: 999px;
 	background: #eaecf0;
+	color: #202122;
 	font-weight: 600;
 	text-transform: capitalize;
 }
