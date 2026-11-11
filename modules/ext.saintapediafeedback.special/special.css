@@ -108,6 +108,7 @@
 	border-radius: 4px;
 	background: #fff;
 	color: #202122;
+	color-scheme: light;
 	font-size: 0.875rem;
 	min-width: 16rem;
 	max-width: 100%;
@@ -123,6 +124,7 @@
 	padding: 12px 14px;
 	background: #f8f9fa;
 	color: #202122;
+	color-scheme: light;
 	border: 1px solid #eaecf0;
 	border-radius: 8px;
 }
@@ -146,6 +148,7 @@
 	border-radius: 4px;
 	background: #fff;
 	color: #202122;
+	color-scheme: light;
 	font-size: 0.875rem;
 }
 
