@@ -607,4 +607,10 @@ body.spf-panel-open {
 	.spf-panel {
 		display: none !important;
 	}
+
+	/* The open panel locks body scrolling; undo that so a print made with
+	 * the panel open is not clipped. */
+	body.spf-panel-open {
+		overflow: visible;
+	}
 }
