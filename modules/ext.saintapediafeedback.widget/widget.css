@@ -593,3 +593,24 @@ body.spf-panel-open {
 .spf-suggest-link:hover {
 	color: #447ff5;
 }
+
+/*
+ * Print: the floating feedback button, edge tab and public-counts pill are
+ * screen-only UI. Hide the whole container so none of it lands on paper.
+ */
+@media print {
+	.spf-container,
+	.spf-fab-wrap,
+	.spf-fab-tab,
+	.spf-public-counts,
+	.spf-backdrop,
+	.spf-panel {
+		display: none !important;
+	}
+
+	/* The open panel locks body scrolling; undo that so a print made with
+	 * the panel open is not clipped. */
+	body.spf-panel-open {
+		overflow: visible;
+	}
+}
