@@ -666,13 +666,14 @@ class FeedbackStore implements FeedbackLlmBatchSource {
 
 	/**
 	 * One feedback row by id, including the columns list queries omit.
-	 * Returns null when it no longer exists.
+	 * Returns null when it no longer exists. Pass $fromPrimary when the answer
+	 * gates a write, so a row not yet replicated is not reported as missing.
 	 */
-	public function getById( int $fbId ): ?object {
+	public function getById( int $fbId, bool $fromPrimary = false ): ?object {
 		if ( $fbId <= 0 ) {
 			return null;
 		}
-		$db = $this->loadBalancer->getConnection( DB_REPLICA );
+		$db = $this->loadBalancer->getConnection( $fromPrimary ? DB_PRIMARY : DB_REPLICA );
 		$row = $db->selectRow(
 			'spf_feedback',
 			self::MANAGER_LIST_FIELDS,

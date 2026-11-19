@@ -9,6 +9,7 @@ use ApiResult;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackAccess;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackFilters;
 use MediaWiki\Extension\SaintapediaFeedback\FeedbackStore;
+use MediaWiki\User\UserIdentityLookup;
 use TitleFactory;
 use Wikimedia\ParamValidator\ParamValidator;
 use Wikimedia\ParamValidator\TypeDef\IntegerDef;
@@ -22,6 +23,11 @@ use Wikimedia\ParamValidator\TypeDef\IntegerDef;
  * (via FeedbackStore::exportRow()). Never returns fb_ip_hash; contact email
  * only on explicit request with userCanViewEmail().
  *
+ * spfincluderesolution=1 (1.11.0) adds the resolution / work-note fields that
+ * the dashboard already shows to anyone with saintapediafeedback-view, so a
+ * bot can read back what action=saintapediafeedbackupdate wrote. Off by
+ * default so the default output stays identical to the JSON export.
+ *
  * Read-only: GET is fine, no token, not a write module (ApiQueryBase
  * defaults; restated below so a reviewer does not have to look them up).
  */
@@ -29,16 +35,21 @@ class ApiQuerySaintapediaFeedback extends ApiQueryBase {
 
 	private FeedbackStore $store;
 	private TitleFactory $titleFactory;
+	private UserIdentityLookup $userIdentityLookup;
+	/** @var array<int,string|null> user id => name cache for statusUser */
+	private array $userNames = [];
 
 	public function __construct(
 		ApiQuery $query,
 		string $moduleName,
 		FeedbackStore $store,
-		TitleFactory $titleFactory
+		TitleFactory $titleFactory,
+		UserIdentityLookup $userIdentityLookup
 	) {
 		parent::__construct( $query, $moduleName, 'spf' );
 		$this->store = $store;
 		$this->titleFactory = $titleFactory;
+		$this->userIdentityLookup = $userIdentityLookup;
 	}
 
 	public function execute(): void {
@@ -128,12 +139,37 @@ class ApiQuerySaintapediaFeedback extends ApiQueryBase {
 			if ( $wantEmail ) {
 				$item['contactEmail'] = $emails[(int)$row->fb_id] ?? null;
 			}
+			if ( $params['includeresolution'] ) {
+				$item += $this->resolutionFields( $row );
+			}
 			if ( !$result->addValue( $path, null, $item ) ) {
 				$this->setContinueEnumParameter( 'continue', $row->fb_timestamp . '|' . (int)$row->fb_id );
 				break;
 			}
 		}
 		$result->addIndexedTagName( $path, 'feedback' );
+	}
+
+	/**
+	 * Fields the dashboard shows on an item but the export leaves out.
+	 * @param object $row MANAGER_LIST_FIELDS row
+	 * @return array<string,mixed>
+	 */
+	private function resolutionFields( $row ): array {
+		$uid = $row->fb_status_user_id !== null ? (int)$row->fb_status_user_id : 0;
+		if ( $uid > 0 && !array_key_exists( $uid, $this->userNames ) ) {
+			$identity = $this->userIdentityLookup->getUserIdentityByUserId( $uid );
+			$this->userNames[$uid] = $identity ? $identity->getName() : null;
+		}
+		return [
+			'workNote'          => $row->fb_work_note ?? null,
+			'resolutionSummary' => $row->fb_resolution_summary ?? null,
+			'resolutionPublic'  => (int)$row->fb_resolution_public === 1,
+			'statusUser'        => $uid > 0 ? $this->userNames[$uid] : null,
+			'statusTimestamp'   => $row->fb_status_timestamp
+				? wfTimestamp( TS_ISO_8601, $row->fb_status_timestamp )
+				: null,
+		];
 	}
 
 	/**
@@ -213,6 +249,10 @@ class ApiQuerySaintapediaFeedback extends ApiQueryBase {
 				ParamValidator::PARAM_TYPE => 'boolean',
 				ParamValidator::PARAM_DEFAULT => false,
 			],
+			'includeresolution' => [
+				ParamValidator::PARAM_TYPE => 'boolean',
+				ParamValidator::PARAM_DEFAULT => false,
+			],
 			'continue' => [
 				ApiBase::PARAM_HELP_MSG => 'api-help-param-continue',
 			],
@@ -228,6 +268,8 @@ class ApiQuerySaintapediaFeedback extends ApiQueryBase {
 				=> 'apihelp-query+saintapediafeedback-example-since',
 			'action=query&list=saintapediafeedback&spfpage=Main_Page&spfstatus=*'
 				=> 'apihelp-query+saintapediafeedback-example-page',
+			'action=query&list=saintapediafeedback&spfstatus=actioned&spfincluderesolution=1'
+				=> 'apihelp-query+saintapediafeedback-example-resolution',
 		];
 	}
 }
