@@ -1,6 +1,6 @@
 {
 	"name": "SaintapediaFeedback",
-	"version": "1.10.0",
+	"version": "1.11.0",
 	"author": [
 		"Saintapedia contributors"
 	],
@@ -29,6 +29,12 @@
 				"SaintapediaFeedback.FeedbackStore",
 				"TitleFactory"
 			]
+		},
+		"saintapediafeedbackupdate": {
+			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Api\\ApiUpdateFeedback",
+			"services": [
+				"SaintapediaFeedback.FeedbackStore"
+			]
 		}
 	},
 	"APIListModules": {
@@ -36,7 +42,8 @@
 			"class": "MediaWiki\\Extension\\SaintapediaFeedback\\Api\\ApiQuerySaintapediaFeedback",
 			"services": [
 				"SaintapediaFeedback.FeedbackStore",
-				"TitleFactory"
+				"TitleFactory",
+				"UserIdentityLookup"
 			]
 		}
 	},
@@ -52,26 +59,34 @@
 	"AvailableRights": [
 		"saintapediafeedback-view",
 		"saintapediafeedback-viewemail",
-		"saintapediafeedback-export"
+		"saintapediafeedback-export",
+		"saintapediafeedback-process"
 	],
 	"GroupPermissions": {
 		"sysop": {
 			"saintapediafeedback-view": true,
 			"saintapediafeedback-viewemail": true,
-			"saintapediafeedback-export": true
+			"saintapediafeedback-export": true,
+			"saintapediafeedback-process": true
 		}
 	},
 	"GrantPermissions": {
 		"viewfeedback": {
 			"saintapediafeedback-view": true,
 			"saintapediafeedback-export": true
+		},
+		"processfeedback": {
+			"saintapediafeedback-view": true,
+			"saintapediafeedback-process": true
 		}
 	},
 	"GrantPermissionGroups": {
-		"viewfeedback": "administration"
+		"viewfeedback": "administration",
+		"processfeedback": "administration"
 	},
 	"GrantRiskGroups": {
-		"viewfeedback": "low"
+		"viewfeedback": "low",
+		"processfeedback": "vandalism"
 	},
 	"Hooks": {
 		"BeforePageDisplay": "MediaWiki\\Extension\\SaintapediaFeedback\\Hooks::onBeforePageDisplay",

@@ -4,6 +4,33 @@ Releases are tagged. Pin a production wiki to a tag, not to floating `main`.
 
 Versions before 1.8.0 were not changelogged; their history is in git.
 
+## 1.11.0 — unreleased
+
+Write API for feedback status, so a bot (bot password) can do what the
+dashboard's status buttons do. No schema change; `update.php` is not
+required for this release.
+
+### Added
+
+- **`action=saintapediafeedbackupdate`** (POST + CSRF token). Sets status
+  `reviewed`, `actioned` or `dismissed` on up to 50 ids, with an optional
+  private work note (`note`) and, for `actioned` only, a public resolution
+  summary (`summary`) and publish flag (`public`). Uses the same
+  `FeedbackStore::updateStatus()` call as the dashboard, so the status
+  history records the API user as "Who", and the F-05 conflict guard applies
+  per item. If any id is unknown, nothing is written (`nosuchfeedback`).
+  Unlike the dashboard, `actioned` is **private unless `public=1`**.
+- **New right `saintapediafeedback-process`** (sysop by default) and new
+  bot-password/OAuth grant **`processfeedback`** ("Update article feedback
+  status and resolution notes"). The existing read-only `viewfeedback` grant
+  does not gain any write ability. The dashboard still needs only
+  `saintapediafeedback-view`.
+- **Optional rate limit** key `saintapediafeedback-update` (each id counts
+  once); inactive unless set in `$wgRateLimits`.
+- **`list=saintapediafeedback&spfincluderesolution=1`** also returns
+  `workNote`, `resolutionSummary`, `resolutionPublic`, `statusUser` and
+  `statusTimestamp`. Default output (and the JSON export) is unchanged.
+
 ## 1.10.0 — unreleased
 
 Read-only API for feedback, and a pending-feedback notice on pages.
