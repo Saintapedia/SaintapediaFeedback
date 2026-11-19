@@ -97,24 +97,27 @@ class ApiUpdateFeedback extends ApiBase {
 			$this->dieWithError( 'apierror-saintapediafeedback-actionedonly', 'actionedonly' );
 		}
 
-		$ids = array_values( array_unique( array_filter(
-			array_map( 'intval', $params['ids'] ),
-			static fn ( int $id ) => $id > 0
-		) ) );
-		if ( !$ids ) {
-			$this->dieWithError( [ 'apierror-saintapediafeedback-nosuchfeedback', '0', 1 ], 'nosuchfeedback' );
+		// Reject ids below 1 outright rather than silently dropping them, so "5|0" never reports success for 5 alone.
+		$rawIds = array_map( 'intval', $params['ids'] );
+		$invalid = array_values( array_filter( $rawIds, static fn ( int $id ) => $id < 1 ) );
+		if ( $invalid ) {
+			$this->dieWithError(
+				[ 'apierror-saintapediafeedback-nosuchfeedback', implode( ', ', $invalid ), count( $invalid ) ],
+				'nosuchfeedback'
+			);
 		}
+		$ids = array_values( array_unique( $rawIds ) );
 
 		// 3. Rate limit (each id counts as one action).
 		if ( $this->hitRateLimit( count( $ids ) ) ) {
 			$this->dieWithError( 'apierror-ratelimited', 'ratelimited' );
 		}
 
-		// 4. All-or-nothing existence check: if any id is unknown, write nothing.
+		// 4. All-or-nothing existence check against the primary, so a row not yet on a replica is not misreported.
 		$rows = [];
 		$missing = [];
 		foreach ( $ids as $id ) {
-			$row = $this->store->getById( $id );
+			$row = $this->store->getById( $id, true );
 			if ( $row ) {
 				$rows[$id] = $row;
 			} else {
@@ -172,12 +175,13 @@ class ApiUpdateFeedback extends ApiBase {
 
 	/**
 	 * Authority::limit() exists from MW 1.41; fall back to User::pingLimiter()
-	 * on older cores. Returns true when the caller is over the limit.
+	 * on older cores. Both return true when the caller is over the limit
+	 * (and false when the action is unconfigured), so the result is used as-is.
 	 */
 	private function hitRateLimit( int $incrBy ): bool {
 		$authority = $this->getAuthority();
 		if ( method_exists( $authority, 'limit' ) ) {
-			return !$authority->limit( self::RATE_LIMIT_ACTION, $incrBy, null );
+			return (bool)$authority->limit( self::RATE_LIMIT_ACTION, $incrBy, null );
 		}
 		return $this->getUser()->pingLimiter( self::RATE_LIMIT_ACTION, $incrBy );
 	}

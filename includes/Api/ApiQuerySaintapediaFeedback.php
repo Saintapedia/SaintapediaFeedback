@@ -164,7 +164,7 @@ class ApiQuerySaintapediaFeedback extends ApiQueryBase {
 		return [
 			'workNote'          => $row->fb_work_note ?? null,
 			'resolutionSummary' => $row->fb_resolution_summary ?? null,
-			'resolutionPublic'  => (bool)$row->fb_resolution_public,
+			'resolutionPublic'  => (int)$row->fb_resolution_public === 1,
 			'statusUser'        => $uid > 0 ? $this->userNames[$uid] : null,
 			'statusTimestamp'   => $row->fb_status_timestamp
 				? wfTimestamp( TS_ISO_8601, $row->fb_status_timestamp )

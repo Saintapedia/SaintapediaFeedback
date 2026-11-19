@@ -130,6 +130,29 @@ class ApiUpdateFeedbackTest extends ApiTestCase {
 		$this->assertSame( 'Fixed.', $row->fb_resolution_summary );
 	}
 
+	public function testActionedPrivateReadBackIsFalse(): void {
+		$id = $this->insert();
+		$bot = $this->bot();
+		$this->update( [ 'ids' => $id, 'status' => 'actioned', 'summary' => 'Fixed.' ], $bot );
+		[ $result ] = $this->doApiRequest( [
+			'action' => 'query', 'list' => 'saintapediafeedback',
+			'spfstatus' => 'actioned', 'spfincluderesolution' => 1,
+		], null, false, $bot );
+		$this->assertFalse( $result['query']['saintapediafeedback'][0]['resolutionPublic'] );
+	}
+
+	public function testZeroIdIsRejectedNotDropped(): void {
+		$id = $this->insert();
+		$this->expectException( \ApiUsageException::class );
+		$this->update( [ 'ids' => $id . '|0', 'status' => 'reviewed' ], $this->bot() );
+	}
+
+	public function testUnconfiguredRateLimitStillUpdates(): void {
+		$id = $this->insert();
+		$out = $this->update( [ 'ids' => $id, 'status' => 'reviewed' ], $this->bot() );
+		$this->assertSame( 'success', $out['result'] );
+	}
+
 	public function testActionedPublicAndReadBack(): void {
 		$id = $this->insert();
 		$bot = $this->bot();
