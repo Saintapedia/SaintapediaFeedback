@@ -1,6 +1,6 @@
 # SaintapediaFeedback production deploy
 
-**Stable release: v1.9.0** — pin prod to this tag (or a newer `v1.9.x`).
+**Stable release: v1.11.0** — pin prod to this tag (or a newer `v1.11.x`).
 Do not track floating `main`.
 
 See [CHANGELOG.md](./CHANGELOG.md) for what changed.

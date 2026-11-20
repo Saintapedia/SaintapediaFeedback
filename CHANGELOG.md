@@ -31,7 +31,7 @@ required for this release.
   `workNote`, `resolutionSummary`, `resolutionPublic`, `statusUser` and
   `statusTimestamp`. Default output (and the JSON export) is unchanged.
 
-## 1.10.0 — unreleased
+## 1.10.0 — 2026-11-01
 
 Read-only API for feedback, and a pending-feedback notice on pages.
 No schema change; `update.php` is not required.
