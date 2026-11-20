@@ -4,7 +4,7 @@ Releases are tagged. Pin a production wiki to a tag, not to floating `main`.
 
 Versions before 1.8.0 were not changelogged; their history is in git.
 
-## 1.11.0 — unreleased
+## 1.11.0 — 2026-11-19
 
 Write API for feedback status, so a bot (bot password) can do what the
 dashboard's status buttons do. No schema change; `update.php` is not
